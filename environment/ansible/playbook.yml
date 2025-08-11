@@ -1,0 +1,245 @@
+---
+- name: Provision The Server
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - vars/secrets.yml
+
+  pre_tasks:
+    - name: Stop and mask automatic update services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: stopped
+        masked: yes
+      loop:
+        - unattended-upgrades
+        - apt-daily.service
+        - apt-daily.timer
+        - apt-daily-upgrade.service
+        - apt-daily-upgrade.timer
+      ignore_errors: true
+
+    - name: Wait a moment for processes to fully stop
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: Remove any stale lock files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /var/lib/dpkg/lock
+        - /var/lib/dpkg/lock-frontend
+        - /var/cache/apt/archives/lock
+      ignore_errors: true
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+        lock_timeout: 300
+      register: apt_update
+      retries: 3
+      delay: 10
+      until: apt_update is succeeded
+
+    - name: Install prerequisites
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - btop
+          - tree
+          - bat
+          - net-tools
+          - neofetch
+        state: present
+        lock_timeout: 300
+      register: apt_prereqs
+      retries: 3
+      delay: 10
+      until: apt_prereqs is succeeded
+
+    - name: Set timezone to Asia/Ho_Chi_Minh
+      ansible.builtin.timezone:
+        name: Asia/Ho_Chi_Minh
+
+    - name: Symlink batcat to cat
+      ansible.builtin.file:
+        src: /usr/bin/batcat
+        dest: /usr/local/bin/bat
+        state: link
+      when: ansible_facts['distribution'] == 'Ubuntu'
+
+    - name: Create non-root user {{ user1 }}
+      ansible.builtin.user:
+        name: "{{ user1 }}"
+        state: present
+        shell: /bin/bash
+        create_home: yes
+        groups: sudo
+        append: yes
+        password: "{{ user1_password | password_hash('sha512') }}"
+
+    - name: Create non-root user {{ user2 }}
+      ansible.builtin.user:
+        name: "{{ user2 }}"
+        state: present
+        shell: /bin/bash
+        create_home: yes
+        groups: sudo
+        append: yes
+        password: "{{ user2_password | password_hash('sha512') }}"
+
+    # --- FIREWALL --- #
+    - name: Set UFW default incoming policy to deny
+      community.general.ufw:
+        direction: incoming
+        policy: deny
+
+    - name: Set UFW default outgoing policy to allow
+      community.general.ufw:
+        direction: outgoing
+        policy: allow
+
+    - name: Limit SSH on custom port
+      community.general.ufw:
+        rule: limit
+        port: "{{ ssh_port }}"
+        proto: tcp
+
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+
+    # --- SSH CONFIG --- #
+    - name: Stop and disable ssh.socket
+      ansible.builtin.systemd:
+        name: ssh.socket
+        state: stopped
+        enabled: no
+
+    - name: Create .ssh directory for {{ user1 }}
+      ansible.builtin.file:
+        path: /home/{{ user1 }}/.ssh
+        state: directory
+        owner: "{{ user1 }}"
+        group: "{{ user1 }}"
+        mode: "0700"
+
+    - name: Copy root's authorized_keys to {{ user1 }} user
+      ansible.builtin.copy:
+        src: /root/.ssh/authorized_keys
+        dest: /home/{{ user1 }}/.ssh/authorized_keys
+        owner: "{{ user1 }}"
+        group: "{{ user1 }}"
+        mode: "0600"
+        remote_src: yes
+
+    - name: Create .ssh directory for {{ user2 }}
+      ansible.builtin.file:
+        path: /home/{{ user2 }}/.ssh
+        state: directory
+        owner: "{{ user2 }}"
+        group: "{{ user2 }}"
+        mode: "0700"
+
+    - name: Copy root's authorized_keys to {{ user2 }} user
+      ansible.builtin.copy:
+        src: /root/.ssh/authorized_keys
+        dest: /home/{{ user2 }}/.ssh/authorized_keys
+        owner: "{{ user2 }}"
+        group: "{{ user2 }}"
+        mode: "0600"
+        remote_src: yes
+
+    - name: Change SSH port to custom port
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?Port"
+        line: "Port {{ ssh_port }}"
+        backup: yes
+
+    - name: Disable password authentication
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PasswordAuthentication"
+        line: "PasswordAuthentication no"
+
+    - name: Disable root login
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PermitRootLogin"
+        line: "PermitRootLogin no"
+
+    - name: Enable PAM
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?UsePAM"
+        line: "UsePAM yes"
+
+    - name: Enable public key auth
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PubkeyAuthentication"
+        line: "PubkeyAuthentication yes"
+
+    - name: Set authorized_keys path
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?AuthorizedKeysFile"
+        line: "AuthorizedKeysFile .ssh/authorized_keys"
+
+    - name: Validate SSH config
+      ansible.builtin.command: sshd -t
+
+    - name: Reload SSH service
+      ansible.builtin.systemd:
+        name: ssh
+        state: restarted
+
+    # --- STARSHIP --- #
+    - name: Download Starship installation script
+      ansible.builtin.get_url:
+        url: https://starship.rs/install.sh
+        dest: /tmp/starship-install.sh
+        mode: "0755"
+
+    - name: Install Starship
+      ansible.builtin.shell: /tmp/starship-install.sh --yes
+      args:
+        creates: /usr/local/bin/starship
+
+    - name: Add Starship to Bash profiles for all users
+      ansible.builtin.blockinfile:
+        path: /etc/profile.d/starship.sh
+        create: yes
+        mode: "0755"
+        block: |
+          # Init Starship
+          if command -v starship >/dev/null 2>&1; then
+            eval "$(starship init bash)"
+          fi
+
+    - name: Remove Starship install script
+      ansible.builtin.file:
+        path: /tmp/starship-install.sh
+        state: absent
+
+    # --- HELIX --- #
+    - name: Add Helix PPA
+      ansible.builtin.apt_repository:
+        repo: ppa:maveonair/helix-editor
+        state: present
+
+    - name: Install Helix
+      ansible.builtin.apt:
+        name: helix
+        state: present
+        update_cache: yes
