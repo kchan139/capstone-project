@@ -5,7 +5,7 @@ PROJECT_ROOT="$(dirname "$0")/../.."
 TERRAFORM_DIR="$PROJECT_ROOT/terraform"
 ANSIBLE_DIR="$PROJECT_ROOT/ansible"
 INVENTORY_FILE="$ANSIBLE_DIR/inventory.ini"
-source .env
+source "$ANSIBLE_DIR/scripts/.env"
 
 # Generate inventory.ini
 echo "[servers]" > "$INVENTORY_FILE"

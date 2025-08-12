@@ -1,0 +1,12 @@
+services:
+  openvscode:
+    image: gitpod/openvscode-server
+    init: true
+    user: "0:0"
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - .:/home/workspace:cached
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
