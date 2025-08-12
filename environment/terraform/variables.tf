@@ -10,7 +10,7 @@ variable "phiung_ssh_public_key" {
 
 variable "custom_ssh_port" {
   description = "Custom SSH Port"
-  type        = string
+  type        = number
 }
 
 variable "ssh_access_ips" {
