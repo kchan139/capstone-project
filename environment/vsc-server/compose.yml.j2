@@ -7,7 +7,6 @@ services:
       - "127.0.0.1:{{ item.port }}:3000"
     volumes:
       - .:/home/workspace:cached
-      - /home:/host-home:cached
     stdin_open: true
     tty: true
     restart: unless-stopped
