@@ -2,9 +2,9 @@ services:
   openvscode:
     image: gitpod/openvscode-server
     init: true
-    user: "0:0"
+    user: "{{ item.uid }}:{{ item.gid }}"
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:{{ item.port }}:3000"
     volumes:
       - .:/home/workspace:cached
       - /home:/host-home:cached

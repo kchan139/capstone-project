@@ -49,16 +49,17 @@
     - name: Install prerequisites
       ansible.builtin.apt:
         name:
+          - software-properties-common
           - apt-transport-https
           - ca-certificates
-          - curl
-          - gnupg
           - lsb-release
-          - btop
-          - tree
-          - bat
           - net-tools
           - neofetch
+          - gnupg
+          - btop
+          - curl
+          - tree
+          - bat
         state: present
         lock_timeout: 300
       register: apt_prereqs
@@ -244,6 +245,38 @@
         state: present
         update_cache: yes
 
+    # --- YAZI --- #
+    - name: Download Yazi snap
+      ansible.builtin.get_url:
+        url: "https://github.com/sxyazi/yazi/releases/download/v25.5.31/yazi-amd64.snap"
+        dest: /tmp/yazi-amd64.snap
+        mode: "0644"
+
+    - name: Install snapd if not present
+      ansible.builtin.apt:
+        name: snapd
+        state: present
+        update_cache: yes
+
+    - name: Install Yazi via snap
+      ansible.builtin.command: snap install /tmp/yazi-amd64.snap --classic --dangerous
+      args:
+        creates: /snap/bin/yazi
+
+    - name: Verify Yazi installation
+      ansible.builtin.command: yazi --version
+      register: yazi_version
+      changed_when: false
+
+    - name: Display Yazi version
+      ansible.builtin.debug:
+        msg: "Yazi version installed: {{ yazi_version.stdout }}"
+
+    - name: Remove Yazi snap file
+      ansible.builtin.file:
+        path: /tmp/yazi-amd64.snap
+        state: absent
+
     # --- Docker --- #
     - name: Create directory for Docker GPG key
       ansible.builtin.file:
@@ -304,20 +337,40 @@
         groups: docker
         append: yes
 
-    # --- VSCODE --- #
-    - name: Create microservices directory
-      ansible.builtin.file:
-        path: /opt/vscode
-        state: directory
-        owner: root
-        group: root
-        mode: "0755"
+    # --- Docker Compose per user --- #
+    - name: Gather UID/GID for user1
+      ansible.builtin.getent:
+        database: passwd
+        key: "{{ user1 }}"
+      register: user1_info
 
-    - name: Copy vsc-server directory to /opt/vscode
-      ansible.builtin.copy:
-        src: ../vsc-server/
-        dest: /opt/vscode/
-        owner: root
-        group: root
-        mode: preserve
-        backup: yes
+    # - name: Show user1_info
+    #   debug:
+    #     var: user1_info
+
+    - name: Gather UID/GID for user2
+      ansible.builtin.getent:
+        database: passwd
+        key: "{{ user2 }}"
+      register: user2_info
+
+    - name: Build users_list with UID/GID
+      set_fact:
+        users_list:
+          - name: "{{ user1 }}"
+            port: 3001
+            uid: "{{ user1_info.ansible_facts.getent_passwd[user1][1] }}"
+            gid: "{{ user1_info.ansible_facts.getent_passwd[user1][2] }}"
+          - name: "{{ user2 }}"
+            port: 3000
+            uid: "{{ user2_info.ansible_facts.getent_passwd[user2][1] }}"
+            gid: "{{ user2_info.ansible_facts.getent_passwd[user2][2] }}"
+
+    - name: Create compose.yml per user
+      ansible.builtin.template:
+        src: ../vsc-server/compose.yml.j2
+        dest: "/home/{{ item.name }}/compose.yml"
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: "0644"
+      loop: "{{ users_list }}"
