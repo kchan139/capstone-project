@@ -20,6 +20,15 @@ ssh -L <local_port>:127.0.0.1:<remote_port> <username>@<server_ip> -p <ssh_port>
 - `<server_ip>` → server’s public IP
 - `<ssh_port>` → custom SSH port on the server
 
+#### Alternative: using the helper script
+Instead of typing the full SSH command every time, you can use the included `port-forward.sh` script:
+```bash
+./port-forward.sh
+```
+
+This script loads connection details from your `.env` file.
+Copy `example.env` to `.env`, fill in your values, and then run the script.
+
 ### 2. Each user has a dedicated Docker Compose setup located in their home directory:
 ```
 /home/<username>/compose.yml
