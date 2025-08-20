@@ -17,6 +17,7 @@ func childCommand() error {
     }
     
     // Setup overlay filesystem
+    //TODO: need to get rid of hardcode image
     if err := runtime.SetupOverlayFS("/home/phiung/container_image/fake_ubuntu","/tmp/container-overlay/upper","/tmp/container-overlay/work"); err != nil {
         return fmt.Errorf("failed to setup overlay: %v", err)
     }
@@ -51,18 +52,4 @@ func childCommand() error {
         return fmt.Errorf("failed to execute command: %v", err)
     }
     return nil
-}
-
-func setupOverlayFS() error {
-    // Your existing overlay setup code
-    os.MkdirAll("/tmp/container-overlay/upper", 0755)
-    os.MkdirAll("/tmp/container-overlay/work", 0755)
-    os.MkdirAll("/tmp/container-overlay/merged", 0755)
-
-    overlayOptions := fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s", 
-        "/home/phiung/container_image/fake_ubuntu",
-        "/tmp/container-overlay/upper",
-        "/tmp/container-overlay/work")
-
-    return syscall.Mount("overlay", "/tmp/container-overlay/merged", "overlay", 0, overlayOptions)
 }
