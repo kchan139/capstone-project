@@ -374,3 +374,60 @@
         group: "{{ item.name }}"
         mode: "0644"
       loop: "{{ users_list }}"
+
+    # --- GO INSTALLATION --- #
+    - name: Install Go via apt
+      ansible.builtin.apt:
+        name: golang-go
+        state: present
+        update_cache: yes
+
+    - name: Create Go workspace directories for {{ user1 }}
+      ansible.builtin.file:
+        path: "/home/{{ user1 }}/go/{{ item }}"
+        state: directory
+        owner: "{{ user1 }}"
+        group: "{{ user1 }}"
+        mode: "0755"
+      loop:
+        - bin
+        - src
+        - pkg
+
+    - name: Create Go workspace directories for {{ user2 }}
+      ansible.builtin.file:
+        path: "/home/{{ user2 }}/go/{{ item }}"
+        state: directory
+        owner: "{{ user2 }}"
+        group: "{{ user2 }}"
+        mode: "0755"
+      loop:
+        - bin
+        - src
+        - pkg
+
+    - name: Install Go tools globally
+      ansible.builtin.shell: |
+        export GOPATH=/opt/go
+        export GOBIN=/usr/local/bin
+        go install golang.org/x/tools/gopls@latest
+        go install github.com/go-delve/delve/cmd/dlv@latest
+        go install golang.org/x/tools/cmd/goimports@latest
+      args:
+        creates: "/usr/local/bin/gopls"
+
+    - name: Add user Go bin to PATH in bashrc for {{ user1 }}
+      ansible.builtin.lineinfile:
+        path: "/home/{{ user1 }}/.bashrc"
+        line: "export PATH=$PATH:$HOME/go/bin"
+        create: yes
+        owner: "{{ user1 }}"
+        group: "{{ user1 }}"
+
+    - name: Add user Go bin to PATH in bashrc for {{ user2 }}
+      ansible.builtin.lineinfile:
+        path: "/home/{{ user2 }}/.bashrc"
+        line: "export PATH=$PATH:$HOME/go/bin"
+        create: yes
+        owner: "{{ user2 }}"
+        group: "{{ user2 }}"

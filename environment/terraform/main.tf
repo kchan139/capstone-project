@@ -18,6 +18,12 @@ resource "digitalocean_droplet" "capstone" {
     digitalocean_ssh_key.phiung.id,
   ]
 
+  # provisioner "local-exec" {
+  #   command     = "sleep 100 && ./run.sh"
+  #   working_dir = "../ansible/scripts"
+  #   when        = create
+  # }
+
   backups = false
   # backup_policy {
   #   plan    = "weekly"

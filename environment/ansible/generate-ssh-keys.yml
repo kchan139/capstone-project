@@ -1,0 +1,41 @@
+---
+- name: Generate SSH keys for all users
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - vars/secrets.yml
+
+  tasks:
+    - name: Generate ED25519 SSH key for {{ user1 }}
+      ansible.builtin.user:
+        name: "{{ user1 }}"
+        generate_ssh_key: yes
+        ssh_key_type: ed25519
+        ssh_key_file: .ssh/id_ed25519
+
+    - name: Generate ED25519 SSH key for {{ user2 }}
+      ansible.builtin.user:
+        name: "{{ user2 }}"
+        generate_ssh_key: yes
+        ssh_key_type: ed25519
+        ssh_key_file: .ssh/id_ed25519
+
+    - name: Read {{ user1 }} public key
+      ansible.builtin.slurp:
+        src: "/home/{{ user1 }}/.ssh/id_ed25519.pub"
+      register: user1_pubkey
+
+    - name: Read {{ user2 }} public key
+      ansible.builtin.slurp:
+        src: "/home/{{ user2 }}/.ssh/id_ed25519.pub"
+      register: user2_pubkey
+
+    - name: Display {{ user1 }} SSH public key
+      ansible.builtin.debug:
+        msg: "{{ user1 }} SSH public key: {{ user1_pubkey.content | b64decode | trim }}"
+
+    - name: Display {{ user2 }} SSH public key
+      ansible.builtin.debug:
+        msg: "{{ user2 }} SSH public key: {{ user2_pubkey.content | b64decode | trim }}"
