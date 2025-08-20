@@ -6,6 +6,7 @@ import (
     "os"
     "fmt"
     "syscall"
+    "path/filepath"
 )
 
 func PivotRoot(newRoot, putOld string) error {
@@ -31,22 +32,24 @@ func PivotRoot(newRoot, putOld string) error {
     }
     return nil
 }
+func SetupOverlayFS(containerID, lowerDir string) error {
+    os.MkdirAll("/tmp/container-overlay", 0755)
 
-func SetupOverlayFS(lowerDir, upperDir, workDir string) error { 
-    os.MkdirAll("/tmp/container-overlay/upper", 0755)
-	os.MkdirAll("/tmp/container-overlay/work", 0755)
-	os.MkdirAll("/tmp/container-overlay/merged", 0755)
-	//TODO: need to resolve hardcode
-	overlayOptions := fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s", 
-    lowerDir,  // read-only base
-    upperDir,               // writable layer
-    workDir)  
+    containerBase := fmt.Sprintf("/tmp/container-overlay/%s", containerID)
+    upperDir := filepath.Join(containerBase, "upper")
+    workDir  := filepath.Join(containerBase, "work")
+    merged   := filepath.Join(containerBase, "merged")
 
-	err := syscall.Mount("overlay", "/tmp/container-overlay/merged", "overlay", 0, overlayOptions)
-    os.MkdirAll("/tmp/container-overlay/merged/put_old", 0755)
-	if err != nil {
-		fmt.Printf("Overlay mount failed: %v\n", err)
-        return err
-	}
+    os.MkdirAll(upperDir, 0755)
+    os.MkdirAll(workDir, 0755)
+    os.MkdirAll(merged, 0755)
+
+    overlayOptions := fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s",
+        lowerDir, upperDir, workDir)
+
+    if err := syscall.Mount("overlay", merged, "overlay", 0, overlayOptions); err != nil {
+        return fmt.Errorf("overlay mount failed: %v", err)
+    }
+
     return nil
 }
