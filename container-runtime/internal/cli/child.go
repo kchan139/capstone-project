@@ -3,7 +3,6 @@ package cli
 import (
     "fmt"
     "os"
-    "os/exec"
     "syscall"
     "my-capstone-project/internal/runtime"
     "my-capstone-project/internal/utils"
@@ -52,12 +51,7 @@ func childCommand() error {
     }
     
     // Execute the command
-    cmd := exec.Command(os.Args[2], os.Args[3:]...)
-    cmd.Stdin = os.Stdin
-    cmd.Stdout = os.Stdout
-    cmd.Stderr = os.Stderr
-    
-    err := cmd.Run()
+    err := syscall.Exec(os.Args[2], os.Args[2:], os.Environ())
     if err != nil {
         return fmt.Errorf("failed to execute command: %v", err)
     }
