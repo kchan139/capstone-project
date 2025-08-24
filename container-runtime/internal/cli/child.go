@@ -6,11 +6,21 @@ import (
     "syscall"
     "my-capstone-project/internal/runtime"
     "my-capstone-project/internal/utils"
+    "my-capstone-project/internal/container"
 
 )
 
 func childCommand() error {
-    fmt.Printf("Running %v as %d\n", os.Args[2:], os.Getpid())
+    if len(os.Args) < 3 {
+        return fmt.Errorf("child: missing config file")
+    }
+    configPath := os.Args[2]
+
+    config, err := container.LoadConfig(configPath)
+    if err != nil {
+        return fmt.Errorf("child: failed to load config: %v", err)
+    }
+
     container_id,errstr := utils.RandomHexString(16)
     if errstr != nil {
         return fmt.Errorf("failed to generate random hex strings for container ID: %v", errstr)
@@ -24,7 +34,7 @@ func childCommand() error {
     // Setup overlay filesystem
     //TODO: need to get rid of hardcode image
     fmt.Printf("This is the container ID of this containter:%v\n",container_id)
-    if err := runtime.SetupOverlayFS(container_id,"/home/phiung/container_image/fake_ubuntu"); err != nil {
+    if err := runtime.SetupOverlayFS(container_id,config.RootFS.Path); err != nil {
         return fmt.Errorf("failed to setup overlay: %v", err)
     }
     merge_path:= fmt.Sprintf("/tmp/container-overlay/%s/merged",container_id)
@@ -35,9 +45,12 @@ func childCommand() error {
     if err := runtime.PivotRoot(merge_path, merge_putold_path); err != nil {
         return fmt.Errorf("failed to pivot root: %v", err)
     }
-    
+    workDir := config.Process.Cwd
+    if workDir == "" {
+        workDir = "/"
+    }
     // Change to root directory
-    if err := syscall.Chdir("/"); err != nil {
+    if err := syscall.Chdir(workDir); err != nil {
         return fmt.Errorf("failed to chdir: %v", err)
     }
     
@@ -50,10 +63,30 @@ func childCommand() error {
         return fmt.Errorf("failed to mount proc: %v", err)
     }
     
+
+    // Set environment variables
+    if len(config.Process.Env) > 0 {
+        os.Clearenv()
+        for _, env := range config.Process.Env {
+            // env is in format "KEY=VALUE"
+            if err := os.Setenv(utils.ParseEnvKey(env), utils.ParseEnvValue(env)); err != nil {
+                return fmt.Errorf("failed to set environment: %v", err)
+            }
+        }
+    }
+
     // Execute the command
-    err := syscall.Exec(os.Args[2], os.Args[2:], os.Environ())
+    // Execute the process (replace current process)
+    command := config.Process.Args[0]
+    args := config.Process.Args[1:]
+    env := os.Environ()
+
+    err = syscall.Exec(command, args, env)
     if err != nil {
         return fmt.Errorf("failed to execute command: %v", err)
     }
+
     return nil
 }
+
+

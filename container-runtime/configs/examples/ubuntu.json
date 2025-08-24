@@ -1,0 +1,12 @@
+{
+  "root": {
+    "path": "/home/phiung/container_image/fake_ubuntu",
+    "readonly": false
+  },
+  "process": {
+    "args": ["/bin/bash"],
+    "env": [
+    ],
+    "cwd": "/"
+  }
+}

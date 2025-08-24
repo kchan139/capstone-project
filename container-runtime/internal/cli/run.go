@@ -8,7 +8,9 @@ import (
 )
 
 func runCommand() error {
-    fmt.Printf("Running %v as %d\n", os.Args[2:], os.Getpid())
+    if len(os.Args) < 3 {
+        return fmt.Errorf("usage: mrunc run <config.json>")
+    }
 
     cmd := exec.Command("/proc/self/exe", append([]string{"child"}, os.Args[2:]...)...)
     cmd.Stdin = os.Stdin
