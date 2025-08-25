@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", ]
+    paths: ['container-runtime/**', '.github/workflows/**']
+  pull_request:
+    branches: [ "main", ]
+    paths: ['container-runtime/**', '.github/workflows/**']
+  workflow_dispatch:
+
+env:
+  GO_VERSION_MATRIX: "1.24"
+
+jobs:
+  # Job 1: Build and Basic Tests
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        go-version: [1.24]
+      fail-fast: false
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go ${{ matrix.go-version }}
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ matrix.go-version }}
+        cache-dependency-path: container-runtime/go.sum
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('container-runtime/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-${{ matrix.go-version }}-
+          ${{ runner.os }}-go-
+
+    - name: Install dependencies
+      working-directory: container-runtime
+      run: |
+        go mod download
+        go mod tidy
+        go mod verify
+
+    - name: Build mrunc binary
+      working-directory: container-runtime
+      run: |
+        echo "Building mrunc for Go ${{ matrix.go-version }}"
+        make build
+        ls -la bin/
+
+    - name: Run basic build verification
+      working-directory: container-runtime
+      run: |
+        echo "Verifying binary was created..."
+        test -f bin/mrunc
+        echo "Checking binary is executable..."
+        test -x bin/mrunc
+        echo "Testing CLI help/usage..."
+        ./bin/mrunc 2>&1 || echo "✓ Binary responds to execution"

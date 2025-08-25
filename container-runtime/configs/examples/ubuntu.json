@@ -1,6 +1,6 @@
 {
   "root": {
-    "path": "/home/phiung/container_image/fake_ubuntu",
+    "path": "/home/phiung/container-image/fake-ubuntu",
     "readonly": false
   },
   "process": {
