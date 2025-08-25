@@ -26,7 +26,7 @@ func childCommand() error {
 	}
 
 	// Set hostname
-	if err := syscall.Sethostname([]byte(container_id)); err != nil {
+	if err := syscall.Sethostname([]byte(config.Hostname)); err != nil {
 		return fmt.Errorf("failed to set hostname: %v", err)
 	}
 
