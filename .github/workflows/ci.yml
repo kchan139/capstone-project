@@ -13,7 +13,10 @@ env:
   GO_VERSION_MATRIX: "1.24"
 
 jobs:
+
+  # ============================
   # Job 1: Build and Basic Tests
+  # ============================
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-24.04
@@ -66,3 +69,79 @@ jobs:
         test -x bin/mrunc
         echo "Testing CLI help/usage..."
         ./bin/mrunc 2>&1 || echo "✓ Binary responds to execution"
+
+  
+  # ==============================================
+  # Job 2: Security and Code Quality (placeholder)
+  # ==============================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24'
+
+    - name: Run security scan
+      working-directory: container-runtime
+      run: |
+        echo "Security scanning would happen here..."
+
+    - name: Static analysis
+      working-directory: container-runtime
+      run: |
+        echo "Static analysis would run here..."
+
+
+  # =====================================
+  # Job 3: Functional Tests (placeholder)
+  # =====================================
+  # functional-tests:
+  #   name: Functional Tests
+  #   runs-on: ubuntu-latest
+  #   needs: build-and-test
+  #   if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+  #   steps:
+  #   - name: Checkout code
+  #     uses: actions/checkout@v4
+
+  #   - name: Set up Go
+  #     uses: actions/setup-go@v4
+  #     with:
+  #       go-version: '1.24'
+
+  #   - name: Download build artifacts
+  #     uses: actions/download-artifact@v3
+  #     with:
+  #       name: mrunc-binary-${{ github.sha }}
+  #       path: container-runtime/bin/
+
+  #   - name: Make binary executable
+  #     working-directory: container-runtime
+  #     run: chmod +x bin/mrunc
+
+  #   - name: Prepare test environment
+  #     run: |
+  #       echo "Setting up test environment..."
+
+  #   - name: Run namespace tests
+  #     working-directory: container-runtime
+  #     run: |
+  #       echo "Testing namespace isolation..."
+
+  #   - name: Run filesystem tests
+  #     working-directory: container-runtime
+  #     run: |
+  #       echo "Testing filesystem isolation..."
+
+  #   - name: Run container lifecycle tests
+  #     working-directory: container-runtime
+  #     run: |
+  #       echo "Testing container lifecycle..."
