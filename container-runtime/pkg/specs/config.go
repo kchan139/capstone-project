@@ -3,7 +3,7 @@ package specs
 type ContainerConfig struct {
     RootFS      RootfsConfig      `json:"root"`
     Process     ProcessConfig     `json:"process"`
-    // Hostname    string            `json:"hostname"`
+    Hostname    string            `json:"hostname"`
     // Mounts      []MountConfig     `json:"mounts,omitempty"`
 }
 
