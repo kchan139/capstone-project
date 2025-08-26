@@ -16,6 +16,8 @@ type ProcessConfig struct {
     Args        []string `json:"args"`
     Env         []string `json:"env,omitempty"`
     Cwd         string   `json:"cwd,omitempty"`
+    Terminal    bool     `json:"terminal"`
+
 }
 
 // type MountConfig struct {

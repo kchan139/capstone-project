@@ -25,6 +25,15 @@ func childCommand() error {
 		return fmt.Errorf("failed to generate random hex strings for container ID: %v", errstr)
 	}
 
+	if !config.Process.Terminal {
+        fmt.Printf("Non-interactive mode: detaching from terminal\n")
+        if _, err := syscall.Setsid(); err != nil && err != syscall.EPERM {
+            fmt.Printf("Warning: setsid failed: %v\n", err)
+        }
+    } else {
+        fmt.Printf("Interactive mode: keeping terminal connection\n")
+    }
+    
 	// Set hostname
 	if err := syscall.Sethostname([]byte(config.Hostname)); err != nil {
 		return fmt.Errorf("failed to set hostname: %v", err)
