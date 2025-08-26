@@ -76,13 +76,9 @@ func childCommand() error {
 	// Execute the command
 	// Execute the process (replace current process)
 	command := config.Process.Args[0]
-	args := config.Process.Args[1:]
+	args := config.Process.Args
 	env := os.Environ()
 
-	err = syscall.Exec(command, args, env)
-	if err != nil {
-		return fmt.Errorf("failed to execute command: %v", err)
-	}
 
-	return nil
+	return runtime.ExecuteCommand(command, args, env)
 }
