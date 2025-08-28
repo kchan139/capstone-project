@@ -10,6 +10,7 @@ import (
 	"io"
 	"encoding/json"
 	"syscall"
+	"golang.org/x/sys/unix"
 )
 
 func childCommand() error {
@@ -18,10 +19,10 @@ func childCommand() error {
 	if err != nil {
         return fmt.Errorf("child: failed to receive config: %v", err)
     }
-	container_id, errstr := utils.RandomHexString(16)
-	if errstr != nil {
-		return fmt.Errorf("failed to generate random hex strings for container ID: %v", errstr)
-	}
+	// container_id, errstr := utils.RandomHexString(16)
+	// if errstr != nil {
+	// 	return fmt.Errorf("failed to generate random hex strings for container ID: %v", errstr)
+	// }
 
 	if !config.Process.Terminal {
         fmt.Printf("Non-interactive mode: detaching from terminal\n")
@@ -37,17 +38,16 @@ func childCommand() error {
 		return fmt.Errorf("failed to set hostname: %v", err)
 	}
 
-	// Setup overlay filesystem
-	fmt.Printf("This is the container ID of this containter:%v\n", container_id)
-	if err := runtime.SetupOverlayFS(container_id, config.RootFS.Path); err != nil {
-		return fmt.Errorf("failed to setup overlay: %v", err)
-	}
-	merge_path := fmt.Sprintf("/tmp/container-overlay/%s/merged", container_id)
-	merge_putold_path := fmt.Sprintf("/tmp/container-overlay/%s/merged/put_old", container_id)
-	os.MkdirAll(merge_putold_path, 0755)
 
+	root_fs := config.RootFS.Path
+	root_fs_putold := config.RootFS.Path + "/put_old"
+	os.MkdirAll(root_fs_putold, 0755)
+
+	if err := unix.Mount(root_fs, root_fs, "", unix.MS_BIND, ""); err != nil {
+		panic(fmt.Errorf("bind mount failed: %w", err))
+	}
 	// Pivot root
-	if err := runtime.PivotRoot(merge_path, merge_putold_path); err != nil {
+	if err := runtime.PivotRoot(root_fs, root_fs_putold); err != nil {
 		return fmt.Errorf("failed to pivot root: %v", err)
 	}
 	workDir := config.Process.Cwd
@@ -78,6 +78,11 @@ func childCommand() error {
 			}
 		}
 	}
+
+	// if err := runtime.CreateUserNamespacePhase2(); err != nil {
+    //     fmt.Printf("Warning: failed to create user namespace: %v\n", err)
+    //     // Continue without user namespace for now
+    // }
 
 	// Execute the process (replace current process)
 	command := config.Process.Args[0]
