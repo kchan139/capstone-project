@@ -2,24 +2,22 @@ package cli
 
 import (
 	"fmt"
-	"my-capstone-project/internal/container"
 	"my-capstone-project/internal/runtime"
 	"my-capstone-project/internal/utils"
+	"my-capstone-project/pkg/specs"
+	"strconv"
 	"os"
+	"io"
+	"encoding/json"
 	"syscall"
 )
 
 func childCommand() error {
-	if len(os.Args) < 3 {
-		return fmt.Errorf("child: missing config file")
-	}
-	configPath := os.Args[2]
-
-	config, err := container.LoadConfig(configPath)
+	
+	config, err := receiveConfigFromPipe()
 	if err != nil {
-		return fmt.Errorf("child: failed to load config: %v", err)
-	}
-
+        return fmt.Errorf("child: failed to receive config: %v", err)
+    }
 	container_id, errstr := utils.RandomHexString(16)
 	if errstr != nil {
 		return fmt.Errorf("failed to generate random hex strings for container ID: %v", errstr)
@@ -40,7 +38,6 @@ func childCommand() error {
 	}
 
 	// Setup overlay filesystem
-	//TODO: need to get rid of hardcode image
 	fmt.Printf("This is the container ID of this containter:%v\n", container_id)
 	if err := runtime.SetupOverlayFS(container_id, config.RootFS.Path); err != nil {
 		return fmt.Errorf("failed to setup overlay: %v", err)
@@ -82,7 +79,6 @@ func childCommand() error {
 		}
 	}
 
-	// Execute the command
 	// Execute the process (replace current process)
 	command := config.Process.Args[0]
 	args := config.Process.Args
@@ -90,4 +86,36 @@ func childCommand() error {
 
 
 	return runtime.ExecuteCommand(command, args, env)
+}
+
+// receiveConfigFromPipe reads configuration from pipe passed by parent
+func receiveConfigFromPipe() (*specs.ContainerConfig, error) {
+    // Get pipe FD from environment variable
+    pipeFdStr := os.Getenv("_MRUNC_PIPE_FD")
+    if pipeFdStr == "" {
+        return nil, fmt.Errorf("_MRUNC_PIPE_FD environment variable not set")
+    }
+
+    pipeFd, err := strconv.Atoi(pipeFdStr)
+    if err != nil {
+        return nil, fmt.Errorf("invalid pipe FD: %v", err)
+    }
+
+    // Create file from FD
+    pipe := os.NewFile(uintptr(pipeFd), "config-pipe")
+    defer pipe.Close()
+
+    // Read all data from pipe
+    configData, err := io.ReadAll(pipe)
+    if err != nil {
+        return nil, fmt.Errorf("failed to read config data: %v", err)
+    }
+
+    // Deserialize config
+    var config specs.ContainerConfig
+    if err := json.Unmarshal(configData, &config); err != nil {
+        return nil, fmt.Errorf("failed to parse config JSON: %v", err)
+    }
+
+    return &config, nil
 }
