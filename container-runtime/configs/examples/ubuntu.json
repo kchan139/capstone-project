@@ -9,7 +9,7 @@
     ],
     "cwd": "/",
     "terminal": true,
-    "user": {"uid":1001, "gid":1001}
+    "user": {"uid":0, "gid":0}
   },
   "hostname":"phiunghaha"
 }

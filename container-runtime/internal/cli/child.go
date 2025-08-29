@@ -78,11 +78,17 @@ func childCommand() error {
 			}
 		}
 	}
+	syncChild := os.NewFile(uintptr(4), "parent")
+	syncChild.Write([]byte{1})
+	fmt.Println("Child sent signal to parent")
 
-	// if err := runtime.CreateUserNamespacePhase2(); err != nil {
-    //     fmt.Printf("Warning: failed to create user namespace: %v\n", err)
-    //     // Continue without user namespace for now
-    // }
+	buf := make([]byte, 1)
+	_, _ = syncChild.Read(buf)
+	fmt.Println("Child: got signal from parent, continuing...")
+	if err := runtime.CreateUserNamespacePhase2(); err != nil {
+        fmt.Printf("Warning: failed to create user namespace: %v\n", err)
+        // Continue without user namespace for now
+    }
 
 	if err := runtime.SetProcessUser(config.Process.User); err != nil {
         return fmt.Errorf("failed to set process user: %v", err)
