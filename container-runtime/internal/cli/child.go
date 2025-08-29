@@ -84,6 +84,10 @@ func childCommand() error {
     //     // Continue without user namespace for now
     // }
 
+	if err := runtime.SetProcessUser(config.Process.User); err != nil {
+        return fmt.Errorf("failed to set process user: %v", err)
+    }
+
 	// Execute the process (replace current process)
 	command := config.Process.Args[0]
 	args := config.Process.Args
