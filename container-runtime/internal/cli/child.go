@@ -24,6 +24,8 @@ func childCommand() error {
 	// 	return fmt.Errorf("failed to generate random hex strings for container ID: %v", errstr)
 	// }
 
+
+
 	if !config.Process.Terminal {
         fmt.Printf("Non-interactive mode: detaching from terminal\n")
         if _, err := syscall.Setsid(); err != nil && err != syscall.EPERM {
@@ -78,17 +80,6 @@ func childCommand() error {
 			}
 		}
 	}
-	syncChild := os.NewFile(uintptr(4), "parent")
-	syncChild.Write([]byte{1})
-	fmt.Println("Child sent signal to parent")
-
-	buf := make([]byte, 1)
-	_, _ = syncChild.Read(buf)
-	fmt.Println("Child: got signal from parent, continuing...")
-	if err := runtime.CreateUserNamespacePhase2(); err != nil {
-        fmt.Printf("Warning: failed to create user namespace: %v\n", err)
-        // Continue without user namespace for now
-    }
 
 	if err := runtime.SetProcessUser(config.Process.User); err != nil {
         return fmt.Errorf("failed to set process user: %v", err)
@@ -134,3 +125,4 @@ func receiveConfigFromPipe() (*specs.ContainerConfig, error) {
 
     return &config, nil
 }
+

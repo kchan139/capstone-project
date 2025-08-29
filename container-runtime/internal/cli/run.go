@@ -7,7 +7,6 @@ import (
 	"my-capstone-project/internal/runtime"
 	"my-capstone-project/internal/container"
     "encoding/json"
-    "golang.org/x/sys/unix"
 )
 
 func runCommand() error {
@@ -27,16 +26,10 @@ func runCommand() error {
     if err != nil {
         return err
     }
-    // socket pair use for sync parent and child when creating user namespace
-    fds, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_STREAM, 0)
-	if err != nil {
-		panic(err)
-	}
-    parentSock := os.NewFile(uintptr(fds[0]), "parent")
-	childSock := os.NewFile(uintptr(fds[1]), "child")
+
 
     cmd := exec.Command("/proc/self/exe", append([]string{"child"}, os.Args[2:]...)...)
-    cmd.ExtraFiles = []*os.File{childPipe, childSock}
+    cmd.ExtraFiles = []*os.File{childPipe}
     if config.Process.Terminal {
         // Interactive mode - connect to terminal
         fmt.Printf("Starting container in interactive mode\n")
@@ -50,7 +43,7 @@ func runCommand() error {
         cmd.Stdout = os.Stdout  // Still show output (or redirect to logs)
         cmd.Stderr = os.Stderr  // Still show errors (or redirect to logs)
     }
-    cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3", "_MRUNC_SYNC_FD=4")
+    cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3")
     cmd.SysProcAttr = runtime.CreateNamespaces()
     
     if err := cmd.Start(); err != nil {
@@ -60,32 +53,18 @@ func runCommand() error {
         return err
     }
     childPipe.Close()
-    childSock.Close()
     _, err = parentPipe.Write(configData)
 
-    childPID := cmd.Process.Pid
     if err != nil {
         parentPipe.Close()
         return fmt.Errorf("failed to send config: %v", err)
     }
     parentPipe.Close()
-    // ✅ Parent waits for signal from child
-	buf := make([]byte, 1)
-	_, err = parentSock.Read(buf) // blocks until child writes
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Parent got signal from child, continuing...")
 
-    
-    if err := runtime.SetupUserNamespaceFromParent(childPID); err != nil {
-        // Clean up on error
-        return err
+    if err := cmd.Wait(); err != nil {
+        fmt.Printf("PARENT: Child exited with error: %v\n", err)
+    } else {
+        fmt.Println("PARENT: Child completed successfully")
     }
-    _, err = parentSock.Write([]byte{1})
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Parent: signaled back to child!")
-    return cmd.Wait()
+    return nil
 }
