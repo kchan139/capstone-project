@@ -6,6 +6,8 @@ import (
     "io/ioutil"
     "path/filepath"
     "my-capstone-project/pkg/specs"
+    "my-capstone-project/internal/runtime"
+
 )
 
 func LoadConfig(configPath string) (*specs.ContainerConfig, error) {
@@ -39,11 +41,20 @@ func LoadConfig(configPath string) (*specs.ContainerConfig, error) {
 }
 
 func validateConfig(config *specs.ContainerConfig) error {
+    // Validate rootfs
     if config.RootFS.Path == "" {
         return fmt.Errorf("rootfs path is required")
     }
+    
+    // Validate process
     if len(config.Process.Args) == 0 {
         return fmt.Errorf("process args are required")
     }
+    
+    // Validate user (if specified)
+    if err := runtime.ValidateUser(config.Process.User); err != nil {
+        return fmt.Errorf("invalid user configuration: %v", err)
+    }
+    
     return nil
 }

@@ -2,28 +2,29 @@ package cli
 
 import (
 	"fmt"
-	"my-capstone-project/internal/container"
 	"my-capstone-project/internal/runtime"
 	"my-capstone-project/internal/utils"
+	"my-capstone-project/pkg/specs"
+	"strconv"
 	"os"
+	"io"
+	"encoding/json"
 	"syscall"
+	"golang.org/x/sys/unix"
 )
 
 func childCommand() error {
-	if len(os.Args) < 3 {
-		return fmt.Errorf("child: missing config file")
-	}
-	configPath := os.Args[2]
-
-	config, err := container.LoadConfig(configPath)
+	
+	config, err := receiveConfigFromPipe()
 	if err != nil {
-		return fmt.Errorf("child: failed to load config: %v", err)
-	}
+        return fmt.Errorf("child: failed to receive config: %v", err)
+    }
+	// container_id, errstr := utils.RandomHexString(16)
+	// if errstr != nil {
+	// 	return fmt.Errorf("failed to generate random hex strings for container ID: %v", errstr)
+	// }
 
-	container_id, errstr := utils.RandomHexString(16)
-	if errstr != nil {
-		return fmt.Errorf("failed to generate random hex strings for container ID: %v", errstr)
-	}
+
 
 	if !config.Process.Terminal {
         fmt.Printf("Non-interactive mode: detaching from terminal\n")
@@ -39,18 +40,16 @@ func childCommand() error {
 		return fmt.Errorf("failed to set hostname: %v", err)
 	}
 
-	// Setup overlay filesystem
-	//TODO: need to get rid of hardcode image
-	fmt.Printf("This is the container ID of this containter:%v\n", container_id)
-	if err := runtime.SetupOverlayFS(container_id, config.RootFS.Path); err != nil {
-		return fmt.Errorf("failed to setup overlay: %v", err)
-	}
-	merge_path := fmt.Sprintf("/tmp/container-overlay/%s/merged", container_id)
-	merge_putold_path := fmt.Sprintf("/tmp/container-overlay/%s/merged/put_old", container_id)
-	os.MkdirAll(merge_putold_path, 0755)
 
+	root_fs := config.RootFS.Path
+	root_fs_putold := config.RootFS.Path + "/put_old"
+	os.MkdirAll(root_fs_putold, 0755)
+
+	if err := unix.Mount(root_fs, root_fs, "", unix.MS_BIND, ""); err != nil {
+		panic(fmt.Errorf("bind mount failed: %w", err))
+	}
 	// Pivot root
-	if err := runtime.PivotRoot(merge_path, merge_putold_path); err != nil {
+	if err := runtime.PivotRoot(root_fs, root_fs_putold); err != nil {
 		return fmt.Errorf("failed to pivot root: %v", err)
 	}
 	workDir := config.Process.Cwd
@@ -82,7 +81,10 @@ func childCommand() error {
 		}
 	}
 
-	// Execute the command
+	if err := runtime.SetProcessUser(config.Process.User); err != nil {
+        return fmt.Errorf("failed to set process user: %v", err)
+    }
+
 	// Execute the process (replace current process)
 	command := config.Process.Args[0]
 	args := config.Process.Args
@@ -91,3 +93,36 @@ func childCommand() error {
 
 	return runtime.ExecuteCommand(command, args, env)
 }
+
+// receiveConfigFromPipe reads configuration from pipe passed by parent
+func receiveConfigFromPipe() (*specs.ContainerConfig, error) {
+    // Get pipe FD from environment variable
+    pipeFdStr := os.Getenv("_MRUNC_PIPE_FD")
+    if pipeFdStr == "" {
+        return nil, fmt.Errorf("_MRUNC_PIPE_FD environment variable not set")
+    }
+
+    pipeFd, err := strconv.Atoi(pipeFdStr)
+    if err != nil {
+        return nil, fmt.Errorf("invalid pipe FD: %v", err)
+    }
+
+    // Create file from FD
+    pipe := os.NewFile(uintptr(pipeFd), "config-pipe")
+    defer pipe.Close()
+
+    // Read all data from pipe
+    configData, err := io.ReadAll(pipe)
+    if err != nil {
+        return nil, fmt.Errorf("failed to read config data: %v", err)
+    }
+
+    // Deserialize config
+    var config specs.ContainerConfig
+    if err := json.Unmarshal(configData, &config); err != nil {
+        return nil, fmt.Errorf("failed to parse config JSON: %v", err)
+    }
+
+    return &config, nil
+}
+

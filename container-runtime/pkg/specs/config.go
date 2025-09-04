@@ -17,8 +17,15 @@ type ProcessConfig struct {
     Env         []string `json:"env,omitempty"`
     Cwd         string   `json:"cwd,omitempty"`
     Terminal    bool     `json:"terminal"`
-
+    User        *User    `json:"user,omitempty"`
 }
+
+type User struct {
+    UID            int   `json:"uid"`
+    GID            int   `json:"gid"`
+    AdditionalGids []int `json:"additionalGids,omitempty"`
+}
+
 
 // type MountConfig struct {
 //     Source      string   `json:"source"`
