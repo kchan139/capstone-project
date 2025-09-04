@@ -1,6 +1,6 @@
 {
   "root": {
-    "path": "/home/phiung/container-image/fake-ubuntu",
+    "path": "/var/lib/mrunc/images/ubuntu",
     "readonly": false
   },
   "process": {
