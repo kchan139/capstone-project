@@ -1,6 +1,6 @@
 {
   "root": {
-    "path": "/home/phiung/container-image/fake-ubuntu",
+    "path": "/var/lib/mrunc/images/ubuntu",
     "readonly": false
   },
   "process": {
@@ -10,5 +10,5 @@
     "cwd": "/",
     "terminal": true
   },
-  "hostname":"phiunghaha"
+  "hostname":"mrunc-ubuntu"
 }
