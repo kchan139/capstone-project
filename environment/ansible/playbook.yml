@@ -345,10 +345,6 @@
         key: "{{ user1 }}"
       register: user1_info
 
-    # - name: Show user1_info
-    #   debug:
-    #     var: user1_info
-
     - name: Gather UID/GID for user2
       ansible.builtin.getent:
         database: passwd
@@ -432,3 +428,60 @@
         create: yes
         owner: "{{ user2 }}"
         group: "{{ user2 }}"
+
+    # --- ROOTFS SETUP --- #
+    - name: Create rootfs images directory
+      ansible.builtin.file:
+        path: "/var/lib/mrunc/images/"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Install debootstrap for creating rootfs
+      ansible.builtin.apt:
+        name: debootstrap
+        state: present
+        update_cache: yes
+
+    - name: Download Ubuntu 24.04 base rootfs
+      ansible.builtin.get_url:
+        url: "https://cloud-images.ubuntu.com/minimal/releases/noble/release/ubuntu-24.04-minimal-cloudimg-amd64-root.tar.xz"
+        dest: "/tmp/ubuntu-22.04-rootfs.tar.xz"
+        mode: "0644"
+        timeout: 300
+      register: ubuntu_download
+      retries: 3
+      delay: 30
+      until: ubuntu_download is succeeded
+
+    - name: Create Ubuntu rootfs directory
+      ansible.builtin.file:
+        path: "/var/lib/mrunc/images/ubuntu"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Extract Ubuntu rootfs
+      ansible.builtin.unarchive:
+        src: "/tmp/ubuntu-22.04-rootfs.tar.xz"
+        dest: "/var/lib/mrunc/images/ubuntu"
+        remote_src: yes
+        owner: root
+        group: root
+        creates: "/var/lib/mrunc/images/ubuntu/etc/os-release"
+
+    - name: Verify Ubuntu rootfs extraction
+      ansible.builtin.stat:
+        path: "/var/lib/mrunc/images/ubuntu/etc/os-release"
+      register: ubuntu_rootfs_check
+
+    - name: Display rootfs verification status
+      ansible.builtin.debug:
+        msg: "Ubuntu rootfs extracted successfully: {{ ubuntu_rootfs_check.stat.exists }}"
+
+    - name: Remove downloaded tar file
+      ansible.builtin.file:
+        path: "/tmp/ubuntu-22.04-rootfs.tar.xz"
+        state: absent
