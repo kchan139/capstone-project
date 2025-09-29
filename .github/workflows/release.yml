@@ -72,11 +72,20 @@ jobs:
           echo "Build artifacts:"
           ls -lh
 
-      - name: Generate release notes
+      - name: Get previous release tag
+        if: steps.check_release.outputs.exists == 'false'
+        id: previous_tag
+        run: |
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "previous_tag=${PREVIOUS_TAG}" >> $GITHUB_OUTPUT
+          echo "Previous release: ${PREVIOUS_TAG:-none}"
+
+      - name: Generate release notes from commits
         if: steps.check_release.outputs.exists == 'false'
         id: release_notes
         run: |
-          cat > release_notes.md << 'EOF'
+          # Start building release notes
+          cat > release_notes.md << 'HEADER'
           ## MRUNC v${{ steps.version.outputs.version }}
 
           ### Installation
@@ -96,9 +105,26 @@ jobs:
 
           ### What's Changed
 
-          <!-- Add release notes here or generate from commits -->
+          HEADER
 
-          **Full Changelog**: https://github.com/${{ github.repository }}/compare/v${{ steps.version.outputs.version }}
+          # Generate changelog from commits
+          if [ -n "${{ steps.previous_tag.outputs.previous_tag }}" ]; then
+            echo "#### Commits since ${{ steps.previous_tag.outputs.previous_tag }}:" >> release_notes.md
+            echo "" >> release_notes.md
+            git log ${{ steps.previous_tag.outputs.previous_tag }}..HEAD --pretty=format:"- %s (%h)" --no-merges >> release_notes.md
+            echo "" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.previous_tag.outputs.previous_tag }}...v${{ steps.version.outputs.version }}" >> release_notes.md
+          else
+            echo "#### Initial Release" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "This is the first release of MRUNC." >> release_notes.md
+            echo "" >> release_notes.md
+            git log --pretty=format:"- %s (%h)" --no-merges >> release_notes.md
+          fi
+
+          # Add footer
+          cat >> release_notes.md << 'FOOTER'
 
           ### System Requirements
 
@@ -106,16 +132,18 @@ jobs:
           - x86_64 architecture
           - Root privileges (for namespace operations)
 
-          ### Verification
+          ### Usage
 
           ```bash
-          mrunc --version  # (if implemented)
-          # Or check it runs:
-          mrunc run /path/to/config.json
-          ```
-          EOF
+          # Run a container
+          sudo mrunc run /path/to/config.json
 
-          echo "Release notes generated"
+          # Check version
+          mrunc --version
+          ```
+          FOOTER
+
+          echo "Release notes generated from commits"
 
       - name: Create GitHub Release
         if: steps.check_release.outputs.exists == 'false'
