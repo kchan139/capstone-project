@@ -1,0 +1,138 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - "release-*"
+
+env:
+  GO_VERSION: "1.24"
+
+jobs:
+  build-and-release:
+    name: Build and Create Release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for version detection
+
+      - name: Extract version from branch name
+        id: version
+        run: |
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          VERSION="${BRANCH_NAME#release-}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Release version: ${VERSION}"
+
+      - name: Check if release already exists
+        id: check_release
+        run: |
+          if gh release view "v${{ steps.version.outputs.version }}" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Release v${{ steps.version.outputs.version }} already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Release v${{ steps.version.outputs.version }} does not exist"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Go
+        if: steps.check_release.outputs.exists == 'false'
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: container-runtime/go.sum
+
+      - name: Install dependencies
+        if: steps.check_release.outputs.exists == 'false'
+        working-directory: container-runtime
+        run: |
+          go mod download
+          go mod verify
+
+      - name: Build mrunc binary
+        if: steps.check_release.outputs.exists == 'false'
+        working-directory: container-runtime
+        run: |
+          make build
+
+          # Rename binary to include version
+          mv bin/mrunc bin/mrunc-v${{ steps.version.outputs.version }}-linux-amd64
+
+          # Create checksum
+          cd bin
+          sha256sum mrunc-v${{ steps.version.outputs.version }}-linux-amd64 > mrunc-v${{ steps.version.outputs.version }}-linux-amd64.sha256
+
+          echo "Build artifacts:"
+          ls -lh
+
+      - name: Generate release notes
+        if: steps.check_release.outputs.exists == 'false'
+        id: release_notes
+        run: |
+          cat > release_notes.md << 'EOF'
+          ## MRUNC v${{ steps.version.outputs.version }}
+
+          ### Installation
+
+          ```bash
+          # Download the binary
+          curl -LO https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}/mrunc-v${{ steps.version.outputs.version }}-linux-amd64
+
+          # Verify checksum
+          curl -LO https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}/mrunc-v${{ steps.version.outputs.version }}-linux-amd64.sha256
+          sha256sum -c mrunc-v${{ steps.version.outputs.version }}-linux-amd64.sha256
+
+          # Make executable and install
+          chmod +x mrunc-v${{ steps.version.outputs.version }}-linux-amd64
+          sudo mv mrunc-v${{ steps.version.outputs.version }}-linux-amd64 /usr/local/bin/mrunc
+          ```
+
+          ### What's Changed
+
+          <!-- Add release notes here or generate from commits -->
+
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/v${{ steps.version.outputs.version }}
+
+          ### System Requirements
+
+          - Linux kernel 4.x or higher
+          - x86_64 architecture
+          - Root privileges (for namespace operations)
+
+          ### Verification
+
+          ```bash
+          mrunc --version  # (if implemented)
+          # Or check it runs:
+          mrunc run /path/to/config.json
+          ```
+          EOF
+
+          echo "Release notes generated"
+
+      - name: Create GitHub Release
+        if: steps.check_release.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ startsWith(steps.version.outputs.version, '0.') }}
+          files: |
+            container-runtime/bin/mrunc-v${{ steps.version.outputs.version }}-linux-amd64
+            container-runtime/bin/mrunc-v${{ steps.version.outputs.version }}-linux-amd64.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release already exists
+        if: steps.check_release.outputs.exists == 'true'
+        run: |
+          echo "::notice::Release v${{ steps.version.outputs.version }} already exists. Skipping creation."
