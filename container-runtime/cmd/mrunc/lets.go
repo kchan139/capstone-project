@@ -1,19 +1,14 @@
 package main
 
 import (
-    "fmt"
-    "os"
-    "my-capstone-project/internal/cli"
+	"fmt"
+	"my-capstone-project/internal/cli"
+	"os"
 )
 
 func main() {
-    if len(os.Args) < 2 {
-        fmt.Println("Usage: mrunc <command> [args...]")
-        os.Exit(1)
-    }
-    
-    if err := cli.Execute(); err != nil {
-        fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-        os.Exit(1)
-    }
+	if err := cli.NewApp().Run(os.Args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 }
