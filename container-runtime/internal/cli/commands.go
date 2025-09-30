@@ -1,37 +1,29 @@
 package cli
 
 import (
-    "fmt"
-    "os"
+	"github.com/urfave/cli/v2"
 )
 
-func Execute() error {
-     if len(os.Args) < 2 {
-        return showUsage()
-    }
-    switch os.Args[1] {
-    case "run":
-        return runCommand()
-    case "child":
-        return childCommand()
-    // case "create":
-    //     return createCommand()
-    // case "start":
-    //     return startCommand()
-    // case "stop":
-    //     return stopCommand()
-    // case "delete":
-    //     return deleteCommand()
-    default:
-        return fmt.Errorf("unknown command: %s", os.Args[1])
-    }
-}
+const Version = "0.1.1"
 
-func showUsage() error {
-    fmt.Println("Usage:")
-    fmt.Println("  mrunc run <config.json>")
-    fmt.Println("")
-    fmt.Println("Examples:")
-    fmt.Println("  mrunc run configs/examples/ubuntu-container.json")
-    return nil
+func NewApp() *cli.App {
+	return &cli.App{
+		Name:    "mrunc",
+		Usage:   "A minimal container runtime",
+		Version: Version,
+		Commands: []*cli.Command{
+			{
+				Name:      "run",
+				Usage:     "Run a container from a config file",
+				ArgsUsage: "<config.json>",
+				Action:    runCommand,
+			},
+			{
+				Name:   "child",
+				Usage:  "Internal command for child process (do not call directly)",
+				Hidden: true,
+				Action: childCommand,
+			},
+		},
+	}
 }
