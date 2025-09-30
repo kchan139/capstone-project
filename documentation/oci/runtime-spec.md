@@ -241,28 +241,25 @@ parentPipe.Write(configData)
 ## 8. Future Roadmap
 
 ### High Priority (Must Have)
-- [ ] Implement network namespace
-- [ ] Add IPC namespace
-- [ ] Basic cgroups v2 support (CPU, memory limits)
-- [ ] Eliminate shell fallback
-
-### Medium Priority (Should Have)
+- [ ] Basic cgroups v2 support
 - [ ] Seccomp profiles
 - [ ] Capability dropping
+
+### Medium Priority (Should Have)
 - [ ] Standard mount points (dev, sys)
+- [ ] Rootless container support
 - [ ] Container state tracking
 
 ### Low Priority (Nice to Have)
 - [ ] Full OCI config.json compatibility
-- [ ] Hooks support
 - [ ] User namespace improvements
-- [ ] AppArmor/SELinux support
 
 ### Out of Scope
-- [ ] Image management
-- [ ] Registry support
-- [ ] Networking plugins
+- [ ] Network namespace support
+- [ ] AppArmor/SELinux support
+- [ ] IPC namespace support
 - [ ] Volume management
+- [ ] Hooks support
 
 ---
 
