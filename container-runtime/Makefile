@@ -19,16 +19,27 @@ GO=go
 GOOS=$(shell $(GO) env GOOS)
 GOARCH=$(shell $(GO) env GOARCH)
 
-# Build flags
-LDFLAGS=-ldflags "-s -w"
+# Version information (automatically derived from git)
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+# Build flags with version injection
+LDFLAGS=-ldflags "\
+	-s -w \
+	-X 'mrunc/internal/cli.Version=$(VERSION)' \
+	-X 'mrunc/internal/cli.GitCommit=$(GIT_COMMIT)' \
+	-X 'mrunc/internal/cli.BuildDate=$(BUILD_DATE)'"
 BUILD_FLAGS=-trimpath $(LDFLAGS)
 
 # Default target
 all: clean build test
 
-# Build the binary
+# Build the binary with version info
 build:
-	@echo "Building $(BINARY_NAME)..."
+	@echo "Building $(BINARY_NAME) $(VERSION)..."
+	@echo "Commit: $(GIT_COMMIT)"
+	@echo "Date: $(BUILD_DATE)"
 	@mkdir -p $(BIN_DIR)
 	$(GO) build $(BUILD_FLAGS) -o $(BIN_DIR)/$(BINARY_NAME) $(CMD_DIR)
 	@echo "Build complete: $(BIN_DIR)/$(BINARY_NAME)"
@@ -73,6 +84,12 @@ run-bin: build
 	@echo "Running built binary with config: $(CONFIG)"
 	sudo ./$(BIN_DIR)/$(BINARY_NAME) run $(CONFIG)
 
+# Show version information
+version:
+	@echo "Version: $(VERSION)"
+	@echo "Commit: $(GIT_COMMIT)"
+	@echo "Build Date: $(BUILD_DATE)"
+
 # Clean build artifacts
 clean:
 	@echo "Cleaning build artifacts..."
@@ -97,9 +114,9 @@ help:
 	@echo "MRUNC Container Runtime - Build & Test Commands"
 	@echo ""
 	@echo "BUILD COMMANDS:"
-	@echo "  build          - Build the binary"
+	@echo "  build          - Build the binary with version info"
 	@echo "  build-race     - Build with race detection"
-	@echo "  build-all      - Cross-compile for all platforms"
+	@echo "  version        - Show version information"
 	@echo ""
 	@echo "RUN COMMANDS:"
 	@echo "  run-dev        - Quick run with go run (default config)"
@@ -115,11 +132,7 @@ help:
 	@echo "  install        - Install binary locally"
 	@echo "  dev-setup      - Setup development environment"
 	@echo ""
-	@echo "CURRENT USAGE PATTERNS:"
-	@echo "  Development:   make run-dev"
-	@echo "  Custom config: make run-custom CONFIG=./configs/examples/myconfig.json"
-	@echo "  Production:    make build && sudo ./bin/mrunc run ./configs/examples/ubuntu.json"
-	@echo ""
-	@echo "CONFIGURATION:"
-	@echo "  Default config: $(DEFAULT_CONFIG)"
-	@echo "  Config directory: $(CONFIG_DIR)"
+	@echo "VERSION INFO:"
+	@echo "  Current Version: $(VERSION)"
+	@echo "  Git Commit: $(GIT_COMMIT)"
+	@echo "  Build Date: $(BUILD_DATE)"

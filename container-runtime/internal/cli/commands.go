@@ -4,13 +4,11 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const Version = "0.1.1"
-
 func NewApp() *cli.App {
 	return &cli.App{
 		Name:    "mrunc",
 		Usage:   "A minimal container runtime",
-		Version: Version,
+		Version: GetVersion(),
 		Commands: []*cli.Command{
 			{
 				Name:      "run",
@@ -28,6 +26,14 @@ func NewApp() *cli.App {
 				Name:   "init",
 				Usage:  "Initialize base rootfs images for mrunc",
 				Action: initCommand,
+			},
+			{
+				Name:  "version",
+				Usage: "Show detailed version information",
+				Action: func(ctx *cli.Context) error {
+					println(GetVersionInfo())
+					return nil
+				},
 			},
 		},
 	}
