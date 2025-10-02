@@ -3,20 +3,32 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"my-capstone-project/internal/container"
-	"my-capstone-project/internal/runtime"
+	"mrunc/internal/config"
+	"mrunc/internal/container"
+	"mrunc/internal/runtime"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/urfave/cli/v2"
 )
 
 func runCommand(ctx *cli.Context) error {
+	var configPath string
+
 	if ctx.NArg() < 1 {
-		return fmt.Errorf("usage: mrunc run <config.json>")
+		// No config specified → use default path
+		baseDir := os.Getenv("MRUNC_BASE")
+		if baseDir == "" {
+			baseDir = config.BaseImageDir
+		}
+		configPath = filepath.Join(baseDir, "ubuntu", "ubuntu.json")
+		fmt.Printf("No config specified, using default: %s\n", configPath)
+	} else {
+		// Use provided config
+		configPath = ctx.Args().Get(0)
 	}
 
-	configPath := ctx.Args().Get(0)
 	config, err := container.LoadConfig(configPath)
 	if err != nil {
 		return err
@@ -36,13 +48,11 @@ func runCommand(ctx *cli.Context) error {
 	cmd.ExtraFiles = []*os.File{childPipe}
 
 	if config.Process.Terminal {
-		// Interactive mode - connect to terminal
 		fmt.Printf("Starting container in interactive mode\n")
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 	} else {
-		// Non-interactive mode - disconnect from terminal
 		fmt.Printf("Starting container in non-interactive mode\n")
 		cmd.Stdin = nil
 		cmd.Stdout = os.Stdout
