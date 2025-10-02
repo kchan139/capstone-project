@@ -91,16 +91,18 @@ jobs:
           ### Installation
 
           ```bash
-          # Download the binary
+          # Download mrunc binary and checksum
           curl -LO https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}/mrunc-v${{ steps.version.outputs.version }}-linux-amd64
+          curl -LO https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}/mrunc-v${{ steps.version.outputs.version }}-linux-amd64.sha256
 
           # Verify checksum
-          curl -LO https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}/mrunc-v${{ steps.version.outputs.version }}-linux-amd64.sha256
           sha256sum -c mrunc-v${{ steps.version.outputs.version }}-linux-amd64.sha256
 
-          # Make executable and install
-          chmod +x mrunc-v${{ steps.version.outputs.version }}-linux-amd64
-          sudo mv mrunc-v${{ steps.version.outputs.version }}-linux-amd64 /usr/local/bin/mrunc
+          # Install (overwrites old version)
+          sudo install -m 0755 mrunc-v${{ steps.version.outputs.version }}-linux-amd64 /usr/local/bin/mrunc
+
+          # Cleanup artifacts
+          rm -f mrunc-v${{ steps.version.outputs.version }}-linux-amd64 mrunc-v${{ steps.version.outputs.version }}-linux-amd64.sha256
           ```
 
           ### What's Changed
@@ -135,11 +137,15 @@ jobs:
           ### Usage
 
           ```bash
-          # Run a container
-          sudo mrunc run /path/to/config.json
+          # Initialize rootfs and default config (run once as root)
+          sudo mrunc init
+
+          # Run a container (using default config)
+          sudo mrunc run
 
           # Check version
           mrunc --version
+          mrunc -v
           ```
           FOOTER
 
