@@ -1,4 +1,4 @@
-module my-capstone-project
+module mrunc
 
 go 1.23.0
 

@@ -5,8 +5,8 @@ import (
     "fmt"
     "io/ioutil"
     "path/filepath"
-    "my-capstone-project/pkg/specs"
-    "my-capstone-project/internal/runtime"
+    "mrunc/pkg/specs"
+    "mrunc/internal/runtime"
 
 )
 

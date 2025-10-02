@@ -24,6 +24,11 @@ func NewApp() *cli.App {
 				Hidden: true,
 				Action: childCommand,
 			},
+			{
+				Name:   "init",
+				Usage:  "Initialize base rootfs images for mrunc",
+				Action: initCommand,
+			},
 		},
 	}
 }

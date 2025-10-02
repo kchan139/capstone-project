@@ -2,7 +2,7 @@ package runtime
 import (
     "fmt"
     "syscall"
-    "my-capstone-project/pkg/specs"
+    "mrunc/pkg/specs"
 )
 
 // SetProcessUser sets the user and group for the container process

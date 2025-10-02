@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"my-capstone-project/internal/cli"
+	"mrunc/internal/cli"
 	"os"
 )
 
