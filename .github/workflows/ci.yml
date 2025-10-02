@@ -2,21 +2,20 @@ name: CI
 
 on:
   push:
-    branches: [ "main", ]
-    paths: ['container-runtime/**', '.github/workflows/**']
+    branches: ["main"]
+    paths: ["container-runtime/**", ".github/workflows/**"]
   pull_request:
-    branches: [ "main", ]
-    paths: ['container-runtime/**', '.github/workflows/**']
+    branches: ["main"]
+    paths: ["container-runtime/**", ".github/workflows/**"]
   workflow_dispatch:
 
 env:
   GO_VERSION_MATRIX: "1.24"
 
 jobs:
-
-  # ============================
-  # Job 1: Build and Basic Tests
-  # ============================
+  # ==============================
+  #  Job 1: Build and Basic Tests
+  # ==============================
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-24.04
@@ -26,81 +25,104 @@ jobs:
       fail-fast: false
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Go ${{ matrix.go-version }}
-      uses: actions/setup-go@v4
-      with:
-        go-version: ${{ matrix.go-version }}
-        cache-dependency-path: container-runtime/go.sum
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache-dependency-path: container-runtime/go.sum
 
-    - name: Cache Go modules
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('container-runtime/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-${{ matrix.go-version }}-
-          ${{ runner.os }}-go-
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('container-runtime/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ matrix.go-version }}-
+            ${{ runner.os }}-go-
 
-    - name: Install dependencies
-      working-directory: container-runtime
-      run: |
-        go mod download
-        go mod tidy
-        go mod verify
+      - name: Install dependencies
+        working-directory: container-runtime
+        run: |
+          go mod download
+          go mod tidy
+          go mod verify
 
-    - name: Build mrunc binary
-      working-directory: container-runtime
-      run: |
-        echo "Building mrunc for Go ${{ matrix.go-version }}"
-        make build
-        ls -la bin/
+      - name: Build mrunc binary
+        working-directory: container-runtime
+        run: |
+          echo "Building mrunc for Go ${{ matrix.go-version }}"
+          make build
+          ls -la bin/
 
-    - name: Verify mrunc binary
-      working-directory: container-runtime
-      run: |
-        echo "Checking mrunc version..."
-        ./bin/mrunc -v | tee version.txt
-        ./bin/mrunc --version || true
-        echo "Ensuring version string present..."
-        grep -E "mrunc version" version.txt
+      - name: Verify mrunc binary
+        working-directory: container-runtime
+        run: |
+          echo "Checking mrunc version..."
+          ./bin/mrunc -v | tee version.txt
+          ./bin/mrunc --version || true
+          echo "Ensuring version string present..."
+          grep -E "mrunc version" version.txt
 
-  
-  # ==============================================
-  # Job 2: Security and Code Quality (placeholder)
-  # ==============================================
+  # ==================================
+  #  Job 2: Security and Code Quality
+  # ==================================
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
     needs: build-and-test
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.24'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.24"
 
-    - name: Run security scan
-      working-directory: container-runtime
-      run: |
-        echo "Security scanning would happen here..."
+      - name: Install Trivy
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          scan-type: fs
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          exit-code: 1
+          format: table
+          scan-ref: ./container-runtime
 
-    - name: Static analysis
-      working-directory: container-runtime
-      run: |
-        echo "Static analysis would run here..."
+      - name: Scan built binary
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          scan-type: fs
+          scan-ref: container-runtime/bin/mrunc
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 1
 
+      - name: Run govulncheck
+        uses: golang/govulncheck-action@v1
+        with:
+          go-version-input: "1.24"
+          go-package: ./container-runtime/...
 
-  # =====================================
-  # Job 3: Functional Tests (placeholder)
-  # =====================================
+      - name: Run go vet
+        working-directory: container-runtime
+        run: go vet ./...
+
+      - name: Run staticcheck
+        uses: dominikh/staticcheck-action@v1
+        with:
+          version: latest
+          working-directory: container-runtime
+
+  # =======================================
+  #  Job 3: Functional Tests (placeholder)
+  # =======================================
   # functional-tests:
   #   name: Functional Tests
   #   runs-on: ubuntu-latest
