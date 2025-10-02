@@ -60,15 +60,14 @@ jobs:
         make build
         ls -la bin/
 
-    - name: Run basic build verification
+    - name: Verify mrunc binary
       working-directory: container-runtime
       run: |
-        echo "Verifying binary was created..."
-        test -f bin/mrunc
-        echo "Checking binary is executable..."
-        test -x bin/mrunc
-        echo "Testing CLI help/usage..."
-        ./bin/mrunc 2>&1 || echo "✓ Binary responds to execution"
+        echo "Checking mrunc version..."
+        ./bin/mrunc -v | tee version.txt
+        ./bin/mrunc --version || true
+        echo "Ensuring version string present..."
+        grep -E "mrunc version" version.txt
 
   
   # ==============================================

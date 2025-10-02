@@ -2,8 +2,8 @@ name: Release
 
 on:
   push:
-    branches:
-      - "release-*"
+    tags:
+      - 'v*.*.*'
 
 env:
   GO_VERSION: "1.24"
@@ -19,48 +19,31 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Full history for version detection
+          fetch-depth: 0
 
-      - name: Extract version from branch name
+      - name: Extract version from tag
         id: version
         run: |
-          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
-          VERSION="${BRANCH_NAME#release-}"
+          VERSION="${GITHUB_REF#refs/tags/v}"
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Release version: ${VERSION}"
 
-      - name: Check if release already exists
-        id: check_release
-        run: |
-          if gh release view "v${{ steps.version.outputs.version }}" &>/dev/null; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "Release v${{ steps.version.outputs.version }} already exists"
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "Release v${{ steps.version.outputs.version }} does not exist"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Set up Go
-        if: steps.check_release.outputs.exists == 'false'
         uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: container-runtime/go.sum
 
       - name: Install dependencies
-        if: steps.check_release.outputs.exists == 'false'
         working-directory: container-runtime
         run: |
           go mod download
           go mod verify
 
-      - name: Build mrunc binary
-        if: steps.check_release.outputs.exists == 'false'
+      - name: Build mrunc binary with version info
         working-directory: container-runtime
         run: |
-          make build
+          make build VERSION=v${{ steps.version.outputs.version }}
 
           # Rename binary to include version
           mv bin/mrunc bin/mrunc-v${{ steps.version.outputs.version }}-linux-amd64
@@ -73,43 +56,45 @@ jobs:
           ls -lh
 
       - name: Get previous release tag
-        if: steps.check_release.outputs.exists == 'false'
         id: previous_tag
         run: |
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           echo "previous_tag=${PREVIOUS_TAG}" >> $GITHUB_OUTPUT
           echo "Previous release: ${PREVIOUS_TAG:-none}"
 
-      - name: Generate release notes from commits
-        if: steps.check_release.outputs.exists == 'false'
+      - name: Generate release notes
         id: release_notes
         run: |
-          # Start building release notes
           cat > release_notes.md << 'HEADER'
           ## MRUNC v${{ steps.version.outputs.version }}
 
           ### Installation
 
           ```bash
-          # Download the binary
+          # Download binary and checksum
           curl -LO https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}/mrunc-v${{ steps.version.outputs.version }}-linux-amd64
+          curl -LO https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}/mrunc-v${{ steps.version.outputs.version }}-linux-amd64.sha256
 
           # Verify checksum
-          curl -LO https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}/mrunc-v${{ steps.version.outputs.version }}-linux-amd64.sha256
           sha256sum -c mrunc-v${{ steps.version.outputs.version }}-linux-amd64.sha256
 
-          # Make executable and install
-          chmod +x mrunc-v${{ steps.version.outputs.version }}-linux-amd64
-          sudo mv mrunc-v${{ steps.version.outputs.version }}-linux-amd64 /usr/local/bin/mrunc
+          # Install
+          sudo install -m 0755 mrunc-v${{ steps.version.outputs.version }}-linux-amd64 /usr/local/bin/mrunc
+
+          # Verify installation
+          mrunc --version
+
+          # Cleanup
+          rm -f mrunc-v${{ steps.version.outputs.version }}-linux-amd64*
           ```
 
           ### What's Changed
 
           HEADER
 
-          # Generate changelog from commits
+          # Generate changelog
           if [ -n "${{ steps.previous_tag.outputs.previous_tag }}" ]; then
-            echo "#### Commits since ${{ steps.previous_tag.outputs.previous_tag }}:" >> release_notes.md
+            echo "#### Changes since ${{ steps.previous_tag.outputs.previous_tag }}:" >> release_notes.md
             echo "" >> release_notes.md
             git log ${{ steps.previous_tag.outputs.previous_tag }}..HEAD --pretty=format:"- %s (%h)" --no-merges >> release_notes.md
             echo "" >> release_notes.md
@@ -118,12 +103,9 @@ jobs:
           else
             echo "#### Initial Release" >> release_notes.md
             echo "" >> release_notes.md
-            echo "This is the first release of MRUNC." >> release_notes.md
-            echo "" >> release_notes.md
             git log --pretty=format:"- %s (%h)" --no-merges >> release_notes.md
           fi
 
-          # Add footer
           cat >> release_notes.md << 'FOOTER'
 
           ### System Requirements
@@ -135,21 +117,21 @@ jobs:
           ### Usage
 
           ```bash
+          # Initialize rootfs (run once as root)
+          sudo mrunc init
+
           # Run a container
-          sudo mrunc run /path/to/config.json
+          sudo mrunc run
 
           # Check version
           mrunc --version
+          mrunc -v
           ```
           FOOTER
 
-          echo "Release notes generated from commits"
-
       - name: Create GitHub Release
-        if: steps.check_release.outputs.exists == 'false'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.version.outputs.version }}
           name: v${{ steps.version.outputs.version }}
           body_path: release_notes.md
           draft: false
@@ -159,8 +141,3 @@ jobs:
             container-runtime/bin/mrunc-v${{ steps.version.outputs.version }}-linux-amd64.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Release already exists
-        if: steps.check_release.outputs.exists == 'true'
-        run: |
-          echo "::notice::Release v${{ steps.version.outputs.version }} already exists. Skipping creation."
