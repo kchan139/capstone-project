@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
 
 env:
   GO_VERSION: "1.24"
@@ -58,9 +58,14 @@ jobs:
       - name: Get previous release tag
         id: previous_tag
         run: |
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          echo "previous_tag=${PREVIOUS_TAG}" >> $GITHUB_OUTPUT
-          echo "Previous release: ${PREVIOUS_TAG:-none}"
+          TAGS=($(git tag --sort=-creatordate | grep '^v[0-9]'))
+          if [ ${#TAGS[@]} -gt 1 ]; then
+            echo "previous_tag=${TAGS[1]}" >> $GITHUB_OUTPUT
+            echo "Previous release: ${TAGS[1]}"
+          else
+            echo "previous_tag=" >> $GITHUB_OUTPUT
+            echo "No previous tag found"
+          fi
 
       - name: Generate release notes
         id: release_notes

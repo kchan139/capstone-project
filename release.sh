@@ -54,7 +54,7 @@ fi
 
 # Show what will be released
 echo -e "${YELLOW}Changes since last release:${NC}"
-LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+LAST_TAG=$(git tag --sort=-creatordate | grep '^v[0-9]' | head -n1)
 if [ -n "$LAST_TAG" ]; then
     git log --oneline "${LAST_TAG}..HEAD"
 else
