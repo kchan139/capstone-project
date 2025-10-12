@@ -206,6 +206,15 @@
         name: ssh
         state: restarted
 
+    # --- MOTD --- #
+    - name: Copy custom MOTD file
+      ansible.builtin.copy:
+        src: files/motd
+        dest: /etc/motd
+        owner: root
+        group: root
+        mode: "0644"
+
     # --- STARSHIP --- #
     - name: Download Starship installation script
       ansible.builtin.get_url:
