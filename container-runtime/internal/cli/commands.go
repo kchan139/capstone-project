@@ -35,6 +35,16 @@ func NewApp() *cli.App {
 					return nil
 				},
 			},
+			{
+				Name:   "create",
+				Usage:  "Create the container but not run it",
+				Action: createCommand,
+			},
+			{
+				Name:   "intermediate",
+				Usage:  "The intermediate process between parent process and init process",
+				Action: intermediateCommand,
+			},
 		},
 	}
 }
