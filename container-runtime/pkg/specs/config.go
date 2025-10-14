@@ -4,6 +4,7 @@ type ContainerConfig struct {
     RootFS      RootfsConfig      `json:"root"`
     Process     ProcessConfig     `json:"process"`
     Hostname    string            `json:"hostname"`
+    ContainerId string
     // Mounts      []MountConfig     `json:"mounts,omitempty"`
 }
 

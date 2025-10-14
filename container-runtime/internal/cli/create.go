@@ -16,7 +16,7 @@ import (
 func createCommand(ctx *cli.Context) error {
 	var configPath string
 
-	if ctx.NArg() < 1 {
+	if ctx.NArg() < 2 {
 		// No config specified → use default path
 		baseDir := os.Getenv("MRUNC_BASE")
 		if baseDir == "" {
@@ -26,10 +26,11 @@ func createCommand(ctx *cli.Context) error {
 		fmt.Printf("No config specified, using default: %s\n", configPath)
 	} else {
 		// Use provided config
-		configPath = ctx.Args().Get(0)
+		configPath = ctx.Args().Get(1)
 	}
-
+	containerId := ctx.Args().Get(0)
 	config, err := container.LoadConfig(configPath)
+	config.ContainerId = containerId
 	if err != nil {
 		return err
 	}
