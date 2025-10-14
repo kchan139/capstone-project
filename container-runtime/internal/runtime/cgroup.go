@@ -2,49 +2,32 @@ package runtime
 
 import (
     "fmt"
-    "github.com/coreos/go-systemd/v22/dbus"
-   godbus "github.com/godbus/dbus/v5"
+    "os"
+    "path/filepath"
+    "strconv"
 )
 
-// CreateScope creates a transient systemd scope for a process
-func CreateScope(containerID string, pid int) error {
-    conn, err := dbus.NewSystemConnection()
-    if err != nil {
-        return fmt.Errorf("connect to systemd: %w", err)
-    }
-    defer conn.Close()
-
-    // Use direct dbus.Property{ Name, Value } instead of dbus.PropBool, etc.
-    props := []dbus.Property{
-		 dbus.PropDescription("mrunc container " + containerID),
-        dbus.PropSlice("user.slice"),
-        dbus.Property{
-            Name:  "Delegate",
-            Value: godbus.MakeVariant(true),
-        },
-        dbus.Property{
-            Name:  "CPUAccounting",
-            Value: godbus.MakeVariant(true),
-        },
-        dbus.Property{
-            Name:  "MemoryAccounting",
-            Value: godbus.MakeVariant(true),
-        },
-        dbus.Property{
-            Name:  "PIDs",
-            Value: godbus.MakeVariant([]uint32{uint32(pid)}),
-        },
+func CreateCgroup(containerID string, pid int) error {
+    uid := os.Getenv("SUDO_UID")
+    if uid == "" {
+        uid = fmt.Sprint(os.Getuid())
     }
 
-    ch := make(chan string)
-    unitName := fmt.Sprintf("mrunc-%s.scope", containerID)
+    cgroupBase := filepath.Join("/sys/fs/cgroup/user.slice", fmt.Sprintf("user-%s.slice", uid))
+    cgroupPath := filepath.Join(cgroupBase, containerID)
 
-    _, err = conn.StartTransientUnit(unitName, "replace", props, ch)
-    if err != nil {
-        return fmt.Errorf("create scope: %w", err)
+    if err := os.MkdirAll(cgroupPath, 0755); err != nil {
+        return fmt.Errorf("create cgroup dir: %w", err)
     }
 
-    // wait for the job result
-    <-ch
+    // Attach process
+    procs := filepath.Join(cgroupPath, "cgroup.procs")
+    if err := os.WriteFile(procs, []byte(strconv.Itoa(pid)), 0644); err != nil {
+        return fmt.Errorf("add pid to cgroup: %w", err)
+    }
+
+    // Optionally, set resource limits:
+    // _ = os.WriteFile(filepath.Join(cgroupPath, "memory.max"), []byte("500M"), 0644)
+
     return nil
 }
