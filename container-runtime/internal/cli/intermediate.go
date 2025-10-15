@@ -18,7 +18,7 @@ func intermediateCommand(ctx *cli.Context) error {
 	}
 	fmt.Println("intermediate called")
 	// setup cgroup
-	runtime.CreateCgroup(config.ContainerId, os.Getpid())
+	runtime.CreateCgroup(config, os.Getpid())
 
 	fmt.Println("Running inside limited cgroup for 10 seconds...")
 	time.Sleep(300 * time.Second)

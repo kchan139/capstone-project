@@ -11,5 +11,21 @@
     "terminal": true,
     "user": {"uid":0, "gid":0}
   },
-  "hostname":"mrunc-ubuntu"
+  "linux": {
+    "resources": {
+      "cpu": {
+        "shares": 1024,
+        "quota": 50000,
+        "period": 100000
+      },
+      "memory": {
+        "limit": 536870912,
+        "reservation": 536870912,
+        "swap": 536870912
+      },
+      "pids": {
+        "limit": 100
+      }
+    }
+  }
 }
