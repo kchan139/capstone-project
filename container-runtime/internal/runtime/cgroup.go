@@ -15,10 +15,6 @@ func CreateCgroup(containerID string, pid int) error {
 		panic(err)
 	}
 	fmt.Println("Current cgroup path:", parent_cgroup_path)
-    uid := os.Getenv("SUDO_UID")
-    if uid == "" {
-        uid = fmt.Sprint(os.Getuid())
-    }
 	cgroup_path := parent_cgroup_path + "/" + containerID;
     if err := os.MkdirAll(cgroup_path, 0755); err != nil {
         return fmt.Errorf("create cgroup dir: %w", err)
