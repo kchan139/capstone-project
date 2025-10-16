@@ -1,6 +1,6 @@
 # MRUNC Container Runtime Makefile
 
-.PHONY: all build clean test test-integration test-namespaces test-filesystem test-lifecycle benchmark security-scan lint help run-dev run-ubuntu
+.PHONY: all build clean test test-integration test-namespaces test-filesystem test-lifecycle benchmark security-scan lint help run-dev run-ubuntu create
 
 # Build configuration
 BINARY_NAME=mrunc
@@ -84,6 +84,14 @@ run-bin: build
 	@echo "Running built binary with config: $(CONFIG)"
 	sudo ./$(BIN_DIR)/$(BINARY_NAME) run $(CONFIG)
 
+# Create a container with default config (usage: make create NAME=mycontainer)
+create: build
+	@if [ -z "$(NAME)" ]; then echo "Usage: make create NAME=<container-name> [CONFIG=path/to/config.json]"; exit 1; fi
+	@CONFIG_FILE=$${CONFIG:-$(DEFAULT_CONFIG)}; \
+	if [ ! -f "$$CONFIG_FILE" ]; then echo "Error: Config file $$CONFIG_FILE not found"; exit 1; fi; \
+	echo "Creating container '$(NAME)' with config: $$CONFIG_FILE"; \
+	sudo ./$(BIN_DIR)/$(BINARY_NAME) create $(NAME) $$CONFIG_FILE
+
 # Show version information
 version:
 	@echo "Version: $(VERSION)"
@@ -126,6 +134,12 @@ help:
 	@echo "  run            - Run built binary with default config"
 	@echo "  run-bin        - Run built binary with custom config"
 	@echo "                   Usage: make run-bin CONFIG=path/to/config.json"
+	@echo ""
+	@echo "CONTAINER COMMANDS:"
+	@echo "  create         - Create a container"
+	@echo "                   Usage: make create NAME=<container-name> [CONFIG=path/to/config.json]"
+	@echo "                   Example: make create NAME=mycontainer"
+	@echo "                   Example: make create NAME=mycontainer CONFIG=configs/examples/ubuntu.json"
 	@echo ""
 	@echo "UTILITY COMMANDS:"
 	@echo "  clean          - Remove build artifacts"
