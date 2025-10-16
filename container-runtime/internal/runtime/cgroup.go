@@ -14,10 +14,10 @@ import (
 func CreateCgroup(config *mySpecs.ContainerConfig, pid int) error {
     parent_cgroup_path, err := getParentCgroupPath()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("get parent cgroup path: %w",err)
 	}
 	fmt.Println("Current cgroup path:", parent_cgroup_path)
-	cgroup_path := parent_cgroup_path + "/" + config.ContainerId;
+	cgroup_path := filepath.Join(parent_cgroup_path,config.ContainerId);
     if err := os.MkdirAll(cgroup_path, 0755); err != nil {
         return fmt.Errorf("create cgroup dir: %w", err)
     }
