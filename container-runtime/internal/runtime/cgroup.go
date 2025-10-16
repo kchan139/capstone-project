@@ -6,16 +6,18 @@ import (
     "path/filepath"
     "bufio"
     "strconv"
+	mySpecs "mrunc/pkg/specs"
+
     "strings"
 )
 
-func CreateCgroup(containerID string, pid int) error {
+func CreateCgroup(config *mySpecs.ContainerConfig, pid int) error {
     parent_cgroup_path, err := getParentCgroupPath()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("get parent cgroup path: %w",err)
 	}
 	fmt.Println("Current cgroup path:", parent_cgroup_path)
-	cgroup_path := parent_cgroup_path + "/" + containerID;
+	cgroup_path := filepath.Join(parent_cgroup_path,config.ContainerId);
     if err := os.MkdirAll(cgroup_path, 0755); err != nil {
         return fmt.Errorf("create cgroup dir: %w", err)
     }
@@ -25,7 +27,56 @@ func CreateCgroup(containerID string, pid int) error {
     if err := os.WriteFile(procs, []byte(strconv.Itoa(pid)), 0644); err != nil {
         return fmt.Errorf("add pid to cgroup: %w", err)
     }
+	if config.Linux.Resources != nil {
+		// cpu controllers
+		if config.Linux.Resources.CPU != nil {
+			cpuCfg := config.Linux.Resources.CPU
 
+			// cpu.shares -> cpu.weight
+			if cpuCfg.Shares > 0 {
+				weight := 1 + ((cpuCfg.Shares-2)*9999)/262142
+				weightStr := strconv.FormatInt(weight, 10)
+				err := os.WriteFile(filepath.Join(cgroup_path, "cpu.weight"), []byte(weightStr), 0644)
+				if err != nil {
+					return fmt.Errorf("set cpu.weight: %w", err)
+				}
+			}
+
+			// cpu.quota + cpu.period -> cpu.max
+			if cpuCfg.Quota > 0 && cpuCfg.Period > 0 {
+				value := fmt.Sprintf("%d %d", cpuCfg.Quota, cpuCfg.Period)
+				err := os.WriteFile(filepath.Join(cgroup_path, "cpu.max"), []byte(value), 0644)
+				if err != nil {
+					return fmt.Errorf("set cpu.max: %w", err)
+				}
+			}
+		}
+		// memory controller
+		if config.Linux.Resources.Memory != nil {
+			mem := config.Linux.Resources.Memory
+			if mem.Limit > 0 {
+				_ = os.WriteFile(filepath.Join(cgroup_path, "memory.max"), []byte(strconv.FormatInt(mem.Limit, 10)), 0644)
+			}
+			if mem.Reservation > 0 {
+				_ = os.WriteFile(filepath.Join(cgroup_path, "memory.low"), []byte(strconv.FormatInt(mem.Reservation, 10)), 0644)
+			}
+			if mem.Swap > 0 {
+				_ = os.WriteFile(filepath.Join(cgroup_path, "memory.swap.max"), []byte(strconv.FormatInt(mem.Swap, 10)), 0644)
+			}
+		}
+		// Pid controller
+		if config.Linux.Resources.Pids != nil {
+			pidsCfg := config.Linux.Resources.Pids
+			if pidsCfg.Limit > 0 {
+				err := os.WriteFile(filepath.Join(cgroup_path, "pids.max"),
+					[]byte(strconv.FormatInt(pidsCfg.Limit, 10)), 0644)
+				if err != nil {
+					return fmt.Errorf("set pids.max: %w", err)
+				}
+			}
+		}
+	}
+	
     // Optionally, set resource limits:
     // _ = os.WriteFile(filepath.Join(cgroupPath, "memory.max"), []byte("500M"), 0644)
 
