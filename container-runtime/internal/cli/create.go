@@ -4,14 +4,16 @@ import (
 	"encoding/json"
 
 	"fmt"
-	"os/exec"
-	"os"
-	"github.com/urfave/cli/v2"
-	"mrunc/internal/utils"
-	"path/filepath"
 	"mrunc/internal/config"
 	"mrunc/internal/container"
+	"mrunc/internal/utils"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
 
+	"github.com/urfave/cli/v2"
 )
 func createCommand(ctx *cli.Context) error {
 	var configPath string
@@ -34,21 +36,27 @@ func createCommand(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
+	// create 2 unix socket, one for intermediate and one for init process
 	parentSock, childSock, err := utils.SocketPair()
 	if err != nil {
 		panic(err)
 	}
+	parentSock2, childSock2, err := utils.SocketPair()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Print("ignore")
+	fmt.Println(parentSock2)
 	defer parentSock.Close()
 	defer childSock.Close()
 
-	configData, err := json.Marshal(config)
-	if err != nil {
-		return err
-	}
+	// configData, err := json.Marshal(config)
+	// if err != nil {
+	// 	return err
+	// }
 
 	cmd := exec.Command("/proc/self/exe", append([]string{"intermediate"}, os.Args[2:]...)...)
-	cmd.ExtraFiles = []*os.File{childSock}
+	cmd.ExtraFiles = []*os.File{childSock, childSock2}
 
 	if config.Process.Terminal {
 		fmt.Printf("Starting container in interactive mode\n")
@@ -67,15 +75,31 @@ func createCommand(ctx *cli.Context) error {
 
 
 	if err := cmd.Start(); err != nil {
-
 		return err
 	}
-
-	_, err = parentSock.Write(configData)
-	if err != nil {
-		return fmt.Errorf("failed to send config: %v", err)
+	childSock.Close()
+	childSock2.Close()
+	// _, err = parentSock.Write(configData)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to send config: %v", err)
+	// }
+	if err := json.NewEncoder(parentSock).Encode(config); err != nil {
+		return fmt.Errorf("send config: %w", err)
 	}
-	parentSock.Close()
+
+	// receive the PID of init process sent from intermediate process
+	buf := make([]byte, 32)
+	n, err := parentSock.Read(buf)
+	if err != nil { return fmt.Errorf("read pid") }
+
+
+	InitPidStr := string(buf[:n])
+
+	pid, _ := strconv.Atoi(strings.TrimSpace(InitPidStr))
+	fmt.Println("Init PID from intermediate:", pid)
+
+
+
 	if err := cmd.Wait(); err != nil {
 		fmt.Printf("PARENT: Intermediate exited with error: %v\n", err)
 	} else {
