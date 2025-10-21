@@ -54,7 +54,6 @@ func NewApp() *cli.App {
 			},
 			{
 				Name:   "start",
-				Hidden: true,
 				Usage:  "Signal the created container to start",
 				Action: startCommand,
 			},
