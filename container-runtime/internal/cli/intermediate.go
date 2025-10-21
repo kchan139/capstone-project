@@ -23,18 +23,16 @@ parent := os.NewFile(uintptr(3), "parent-sock")
 
 	fmt.Println("Running inside limited cgroup for 10 seconds...")
 
-	// unshare the PID namespace
-
-	// if err := unix.Unshare(unix.CLONE_NEWPID); err != nil {
-	// 	panic(fmt.Errorf("unshare: %w", err))
-	// }
 
 	// passing the socket to the init process
 	passedSocket := os.NewFile(uintptr(4), "init-sock")
 	defer passedSocket.Close()
+	// passsing the exec.fifo files
+	fifo_fd := os.NewFile(uintptr(5), "fifo-file")
+	defer fifo_fd.Close()
 
 	cmd := exec.Command("/proc/self/exe", append([]string{"initproc"}, os.Args[2:]...)...)
-	cmd.ExtraFiles = []*os.File{passedSocket}
+	cmd.ExtraFiles = []*os.File{passedSocket, fifo_fd}
 	cmd.SysProcAttr = runtime.CreateNamespaces()
 	if config.Process.Terminal {
 			fmt.Printf("Starting container in interactive mode\n")
@@ -55,34 +53,18 @@ parent := os.NewFile(uintptr(3), "parent-sock")
         return fmt.Errorf("write pid: %w", err)
     }
 
-	if err := cmd.Wait(); err != nil {
-		fmt.Printf("Intermediate: Init exited with error: %v\n", err)
-	} else {
-		fmt.Println("Intermediate: Init completed successfully")
-	}
+	// if err := cmd.Wait(); err != nil {
+	// 	fmt.Printf("Intermediate: Init exited with error: %v\n", err)
+	// } else {
+	// 	fmt.Println("Intermediate: Init completed successfully")
+	// }
+
+
 
 	return nil
 }
 
 
-// func receiveConfigFromSocket() (*mySpecs.ContainerConfig, error) {
-// 	// hard-code the file descriptor
-// 	f := os.NewFile(uintptr(3), "parent-sock")
-
-// 	buf := make([]byte, 4096)
-// 	n, err := f.Read(buf)
-// 	if err != nil {
-//     	return nil, fmt.Errorf("read error: %v", err)
-// 	}
-// 	 f.Close()
-
-
-// 	var config mySpecs.ContainerConfig
-// 	if err := json.Unmarshal(buf[:n], &config); err != nil {
-// 		return nil, fmt.Errorf("failed to parse config JSON: %v", err)
-// 	}
-// 	return &config, nil
-// }
 
 func receiveConfigFrom(r io.Reader) (*mySpecs.ContainerConfig, error) {
     // Use a decoder (stops after one JSON doc; no EOF needed)

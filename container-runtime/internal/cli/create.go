@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/urfave/cli/v2"
+	"golang.org/x/sys/unix"
 )
 func createCommand(ctx *cli.Context) error {
 	var configPath string
@@ -39,24 +40,24 @@ func createCommand(ctx *cli.Context) error {
 	// create 2 unix socket, one for intermediate and one for init process
 	parentSock, childSock, err := utils.SocketPair()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	parentSock2, childSock2, err := utils.SocketPair()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Print("ignore")
 	fmt.Println(parentSock2)
 	defer parentSock.Close()
 	defer childSock.Close()
 
-	// configData, err := json.Marshal(config)
-	// if err != nil {
-	// 	return err
-	// }
-
+	// create the exec.fifo files
+	fifo_fd, err := createExecFifo(config.ContainerId)
+	if err != nil {
+		return err
+	}
 	cmd := exec.Command("/proc/self/exe", append([]string{"intermediate"}, os.Args[2:]...)...)
-	cmd.ExtraFiles = []*os.File{childSock, childSock2}
+	cmd.ExtraFiles = []*os.File{childSock, childSock2, fifo_fd}
 
 	if config.Process.Terminal {
 		fmt.Printf("Starting container in interactive mode\n")
@@ -70,23 +71,20 @@ func createCommand(ctx *cli.Context) error {
 		cmd.Stderr = os.Stderr
 	}
 
-	// does not create namespace yet
-	// cmd.SysProcAttr = runtime.CreateNamespaces()
+
 
 
 	if err := cmd.Start(); err != nil {
 		return err
 	}
+	fifo_fd.Close()
 	childSock.Close()
 	childSock2.Close()
-	// _, err = parentSock.Write(configData)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to send config: %v", err)
-	// }
+
+
 	if err := json.NewEncoder(parentSock).Encode(config); err != nil {
 		return fmt.Errorf("send config: %w", err)
 	}
-
 	// receive the PID of init process sent from intermediate process
 	buf := make([]byte, 32)
 	n, err := parentSock.Read(buf)
@@ -98,7 +96,10 @@ func createCommand(ctx *cli.Context) error {
 	pid, _ := strconv.Atoi(strings.TrimSpace(InitPidStr))
 	fmt.Println("Init PID from intermediate:", pid)
 
-
+	// send config to init proc
+	if err := json.NewEncoder(parentSock2).Encode(config); err != nil {
+		return fmt.Errorf("send config: %w", err)
+	}
 
 	if err := cmd.Wait(); err != nil {
 		fmt.Printf("PARENT: Intermediate exited with error: %v\n", err)
@@ -107,4 +108,27 @@ func createCommand(ctx *cli.Context) error {
 	}
 
 	return nil
+}
+
+func createExecFifo(containerId string) (*os.File, error) {
+    dirPath := "/run/mrunc/" + containerId
+    fifoPath := dirPath + "/exec.fifo"
+
+    // Step 1: ensure directory exists
+    if err := os.MkdirAll(dirPath, 0755); err != nil {
+        return nil, err
+    }
+
+    // Step 2: create FIFO
+    if err := unix.Mkfifo(fifoPath, 0666); err != nil && !os.IsExist(err) {
+        return nil, err
+    }
+
+    // Step 3: open it (both ends, so it doesn't block yet)
+    fifoFile, err := os.OpenFile(fifoPath, os.O_RDWR, os.ModeNamedPipe)
+    if err != nil {
+        return nil, err
+    }
+
+    return fifoFile, nil
 }
