@@ -16,12 +16,18 @@ else
   exit 1
 fi
 
-for mapping in $PORTS; do
-    LOCAL_PORT="${mapping%%:*}"
-    REMOTE_PORT="${mapping##*:}"
-    SSH_ARGS+=("-L" "${LOCAL_PORT}:${REMOTE_HOST}:${REMOTE_PORT}")
-done
+DEST="$PROJECT_ROOT/tmp-local/"
 
-SSH_ARGS+=("-X")
+if [ "$#" -ne 1 ]; then
+  echo "Copy a remote file into $DEST"
+  echo "Usage: $0 <remote-path>"
+  echo "Example: $0 /home/user/example.txt"
+  exit 1
+fi
 
-ssh "${SSH_ARGS[@]}" "$USERNAME@$SERVER_IP" -p "$SSH_PORT"
+mkdir -p "$DEST"
+REMOTE_PATH="$1"
+
+echo "Copying $1 from $SERVER_IP"
+scp -P "$SSH_PORT" "$USERNAME@$SERVER_IP:$REMOTE_PATH" "$DEST"
+echo "File copied to: $DEST"
