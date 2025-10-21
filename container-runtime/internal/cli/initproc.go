@@ -11,7 +11,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-
 func initprocCommand(ctx *cli.Context) error {
 	fmt.Println("Init command run")
 	fmt.Printf("Init, my pid are %d\n", os.Getpid())
@@ -71,14 +70,13 @@ func initprocCommand(ctx *cli.Context) error {
 	args := config.Process.Args
 	env := os.Environ()
 
-
 	// reading from the fifo - waiting for the start signal
 	fd := uintptr(4)
 	fifo_fd := os.NewFile(fd, "inherited-fifo")
 	sync_buf := make([]byte, 100)
 	fmt.Println("before calling fifo read")
 	n, _ := fifo_fd.Read(sync_buf)
-	fmt.Printf("after calling fifo read %d",n)
+	fmt.Printf("after calling fifo read %d\n", n)
 
 	return runtime.ExecuteCommand(command, args, env)
 }
