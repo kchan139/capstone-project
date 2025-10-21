@@ -52,6 +52,12 @@ func NewApp() *cli.App {
 				Usage:  "The Init process that is waiting to run",
 				Action: initprocCommand,
 			},
+			{
+				Name:   "start",
+				Hidden: true,
+				Usage:  "Signal the created container to start",
+				Action: startCommand,
+			},
 		},
 	}
 }

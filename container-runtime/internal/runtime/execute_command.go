@@ -28,7 +28,12 @@ func ExecuteCommand(command string, args []string, env []string) error {
 
 func tryDirectExec(command string, args []string, env []string) error {
 	if filepath.IsAbs(command) {
-		return syscall.Exec(command, args, env)
+		fmt.Printf("[DEBUG] Executing: %s %+v\n", command, args)
+		if err := syscall.Exec(command, args, env); err != nil {
+			fmt.Fprintf(os.Stderr, "[ERROR] syscall.Exec failed: %v\n", err)
+			os.Exit(1)
+		}
+
 	}
 	return fmt.Errorf("not absolute path")
 }
