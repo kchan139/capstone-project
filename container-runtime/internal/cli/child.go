@@ -67,6 +67,13 @@ func childCommand(ctx *cli.Context) error {
 		return fmt.Errorf("failed to mount proc: %v", err)
 	}
 
+	// Setup network namespace (loopback only for now)
+	if err := runtime.SetupLoopback(); err != nil {
+		fmt.Printf("Warning: Failed to setup loopback: %v\n", err)
+	}
+
+	runtime.VerifyNetwork()
+
 	// Set environment variables
 	if len(config.Process.Env) > 0 {
 		os.Clearenv()
