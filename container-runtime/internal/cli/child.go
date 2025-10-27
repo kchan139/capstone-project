@@ -67,11 +67,25 @@ func childCommand(ctx *cli.Context) error {
 		return fmt.Errorf("failed to mount proc: %v", err)
 	}
 
-	// Setup network namespace (loopback only for now)
+	// Setup network namespace
 	if err := runtime.SetupLoopback(); err != nil {
-		return fmt.Errorf("failed to setup loopback: %v", err)
+		fmt.Printf("Warning: Failed to setup loopback: %v\n", err)
 	}
 
+	// Setup veth network if enabled
+	if config.Linux.Network != nil && config.Linux.Network.EnableNetwork {
+		netCfg := config.Linux.Network
+		if err := runtime.SetupContainerNetwork(
+			netCfg.VethContainer,
+			netCfg.ContainerIP,
+			netCfg.GatewayIP,
+			netCfg.DNS,
+		); err != nil {
+			fmt.Printf("Warning: Failed to setup container network: %v\n", err)
+		}
+	}
+
+	// Optional: Verify network setup
 	runtime.VerifyNetwork()
 
 	// Set environment variables

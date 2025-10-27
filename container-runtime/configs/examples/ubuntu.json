@@ -26,6 +26,15 @@
       "pids": {
         "limit": 100
       }
+    },
+    "network": {
+      "enableNetwork": true,
+      "containerIP": "10.0.0.2/24",
+      "gatewayIP": "10.0.0.1",
+      "vethHost": "veth-mrunc-0",
+      "vethContainer": "ceth0",
+      "dns": ["8.8.8.8", "8.8.4.4", "1.1.1.1"],
+      "firewallScript": "./configs/firewall-setup.sh"
     }
   }
 }

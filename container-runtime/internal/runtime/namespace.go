@@ -7,8 +7,8 @@ import (
 )
 
 func CreateNamespaces() *syscall.SysProcAttr {
-	// TODO: need to resolve hardcode
 	return &syscall.SysProcAttr{
+		// Add CLONE_NEWNET for network namespace
 		Cloneflags:   syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS | syscall.CLONE_NEWNET,
 		Unshareflags: syscall.CLONE_NEWNS,
 	}
