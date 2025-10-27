@@ -74,8 +74,25 @@ func runCommand(ctx *cli.Context) error {
 
 	// Setup veth pair from parent side if network enabled
 	if config.Linux.Network != nil && config.Linux.Network.EnableNetwork {
-		// Give child time to setup network namespace
-		time.Sleep(500 * time.Millisecond)
+		// // Give child time to setup network namespace
+		// time.Sleep(500 * time.Millisecond)
+
+		// Wait for child to setup network namespace by polling for /proc/<pid>/ns/net
+		nsPath := fmt.Sprintf("/proc/%d/ns/net", cmd.Process.Pid)
+		const pollInterval = 50 * time.Millisecond
+		const pollTimeout = 2 * time.Second
+		var waited time.Duration
+		for {
+			if _, err := os.Stat(nsPath); err == nil {
+				break
+			}
+			if waited >= pollTimeout {
+				parentPipe.Close()
+				return fmt.Errorf("network namespace for child process (%d) did not appear within timeout", cmd.Process.Pid)
+			}
+			time.Sleep(pollInterval)
+			waited += pollInterval
+		}
 
 		netCfg := config.Linux.Network
 
@@ -87,7 +104,7 @@ func runCommand(ctx *cli.Context) error {
 			netCfg.VethHost,
 			netCfg.VethContainer,
 			netCfg.ContainerIP,
-			netCfg.GatewayIP,
+			netCfg.GatewayCIDR,
 		); err != nil {
 			fmt.Printf("Warning: Failed to setup veth pair: %v\n", err)
 		} else {

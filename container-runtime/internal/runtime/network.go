@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 // brings up the loopback interface inside the container
@@ -36,7 +37,7 @@ func VerifyNetwork() {
 }
 
 // SetupContainerNetwork configures network inside container
-func SetupContainerNetwork(vethName, containerIP, gatewayIP string, dnsServers []string) error {
+func SetupContainerNetwork(vethName, containerIP, gatewayCIDR string, dnsServers []string) error {
 	fmt.Printf("Setting up container network: %s with IP %s\n", vethName, containerIP)
 
 	// Bring up the veth interface
@@ -51,6 +52,7 @@ func SetupContainerNetwork(vethName, containerIP, gatewayIP string, dnsServers [
 		return fmt.Errorf("failed to assign IP %s: %v", containerIP, err)
 	}
 
+	gatewayIP := strings.Split(gatewayCIDR, "/")[0]
 	// Add default route
 	cmd = exec.Command("ip", "route", "add", "default", "via", gatewayIP)
 	if err := cmd.Run(); err != nil {
@@ -76,7 +78,13 @@ func setupDNS(dnsServers []string) error {
 		content += fmt.Sprintf("nameserver %s\n", dns)
 	}
 
-	_ = os.Remove(resolvConf)
+	if err := os.Remove(resolvConf); err != nil {
+		// If the error is anything *other* than "file not found",
+		// log it as a warning.
+		if !os.IsNotExist(err) {
+			fmt.Printf("Warning: failed to remove %s: %v\n", resolvConf, err)
+		}
+	}
 
 	if err := os.WriteFile(resolvConf, []byte(content), 0644); err != nil {
 		return fmt.Errorf("failed to write resolv.conf: %v", err)
@@ -87,7 +95,7 @@ func setupDNS(dnsServers []string) error {
 }
 
 // creates veth pair from parent (host) side
-func SetupHostVethPair(containerPID int, vethHost, vethContainer, containerIP, gatewayIP string) error {
+func SetupHostVethPair(containerPID int, vethHost, vethContainer, containerIP, gatewayCIDR string) error {
 	fmt.Printf("Creating veth pair: %s <-> %s\n", vethHost, vethContainer)
 
 	// Create veth pair
@@ -105,7 +113,7 @@ func SetupHostVethPair(containerPID int, vethHost, vethContainer, containerIP, g
 	}
 
 	// Configure host end
-	cmd = exec.Command("ip", "addr", "add", gatewayIP+"/24", "dev", vethHost)
+	cmd = exec.Command("ip", "addr", "add", gatewayCIDR, "dev", vethHost)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to assign IP to host veth: %v", err)
 	}
@@ -115,7 +123,7 @@ func SetupHostVethPair(containerPID int, vethHost, vethContainer, containerIP, g
 		return fmt.Errorf("failed to bring up host veth: %v", err)
 	}
 
-	fmt.Printf("Host veth %s configured with IP %s\n", vethHost, gatewayIP)
+	fmt.Printf("Host veth %s configured with CIDR %s\n", vethHost, gatewayCIDR)
 	return nil
 }
 

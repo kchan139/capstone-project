@@ -56,7 +56,7 @@ type PidsConfig struct {
 type LinuxNetwork struct {
 	EnableNetwork  bool     `json:"enableNetwork"`
 	ContainerIP    string   `json:"containerIP"`
-	GatewayIP      string   `json:"gatewayIP"`
+	GatewayCIDR    string   `json:"gatewayCIDR"`
 	VethHost       string   `json:"vethHost"`
 	VethContainer  string   `json:"vethContainer"`
 	DNS            []string `json:"dns,omitempty"`

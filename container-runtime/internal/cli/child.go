@@ -78,7 +78,7 @@ func childCommand(ctx *cli.Context) error {
 		if err := runtime.SetupContainerNetwork(
 			netCfg.VethContainer,
 			netCfg.ContainerIP,
-			netCfg.GatewayIP,
+			netCfg.GatewayCIDR,
 			netCfg.DNS,
 		); err != nil {
 			fmt.Printf("Warning: Failed to setup container network: %v\n", err)
