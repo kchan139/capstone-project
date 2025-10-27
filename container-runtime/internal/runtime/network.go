@@ -11,8 +11,10 @@ func SetupLoopback() error {
 
 	// Bring up lo interface
 	cmd := exec.Command("ip", "link", "set", "lo", "up")
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to bring up loopback: %v", err)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to bring up loopback: %v, output: %s", err, string(output))
 	}
 
 	fmt.Println("Loopback interface is up")

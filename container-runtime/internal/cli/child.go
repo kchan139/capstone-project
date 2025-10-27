@@ -69,7 +69,7 @@ func childCommand(ctx *cli.Context) error {
 
 	// Setup network namespace (loopback only for now)
 	if err := runtime.SetupLoopback(); err != nil {
-		fmt.Printf("Warning: Failed to setup loopback: %v\n", err)
+		return fmt.Errorf("failed to setup loopback: %v", err)
 	}
 
 	runtime.VerifyNetwork()
