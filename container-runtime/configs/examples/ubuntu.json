@@ -11,6 +11,7 @@
     "terminal": true,
     "user": {"uid":0, "gid":0}
   },
+  "hostname":"mrunc",
   "linux": {
     "resources": {
       "cpu": {
