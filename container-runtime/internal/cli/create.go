@@ -58,6 +58,9 @@ func createCommand(ctx *cli.Context) error {
 		return err
 	}
 	cmd := exec.Command("/proc/self/exe", append([]string{"intermediate"}, os.Args[2:]...)...)
+	// Mark all fds >=3 as CLOEXEC in one go.
+	// Kernel will skip stdio and anything already CLOEXEC.
+	_ = unix.CloseRange(3, ^uint(0), unix.CLOSE_RANGE_CLOEXEC)
 	cmd.ExtraFiles = []*os.File{childSock, childSock2, fifo_fd}
 
 	if config.Process.Terminal {

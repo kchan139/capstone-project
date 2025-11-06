@@ -10,6 +10,7 @@ import (
 	"os/exec"
 
 	"github.com/urfave/cli/v2"
+	"golang.org/x/sys/unix"
 )
 func intermediateCommand(ctx *cli.Context) error {
 parent := os.NewFile(uintptr(3), "parent-sock")
@@ -32,6 +33,9 @@ parent := os.NewFile(uintptr(3), "parent-sock")
 	defer fifo_fd.Close()
 
 	cmd := exec.Command("/proc/self/exe", append([]string{"initproc"}, os.Args[2:]...)...)
+	// Mark all fds >=3 as CLOEXEC in one go.
+	// Kernel will skip stdio and anything already CLOEXEC.
+	_ = unix.CloseRange(3, ^uint(0), unix.CLOSE_RANGE_CLOEXEC)
 	cmd.ExtraFiles = []*os.File{passedSocket, fifo_fd}
 	cmd.SysProcAttr = runtime.CreateNamespaces()
 	if config.Process.Terminal {
