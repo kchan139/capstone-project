@@ -1,0 +1,40 @@
+{
+  "root": {
+    "path": "/var/lib/mrunc/images/ubuntu",
+    "readonly": false
+  },
+  "process": {
+    "args": ["/bin/sh", "-c", "echo '=== Container Test Started ===' && echo 'Hostname:' && hostname && echo 'PID:' && echo $$ && echo 'Network:' && ip addr show && echo 'DNS:' && cat /etc/resolv.conf && echo 'Process count:' && ps aux | wc -l && echo '=== Test Completed Successfully ==='"],
+    "env": ["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"],
+    "cwd": "/",
+    "terminal": false,
+    "user": {"uid":0, "gid":0}
+  },
+  "hostname":"ci-test-mrunc",
+  "linux": {
+    "resources": {
+      "cpu": {
+        "shares": 1024,
+        "quota": 50000,
+        "period": 100000
+      },
+      "memory": {
+        "limit": 268435456,
+        "reservation": 268435456,
+        "swap": 268435456
+      },
+      "pids": {
+        "limit": 50
+      }
+    },
+    "network": {
+      "enableNetwork": true,
+      "containerIP": "10.0.0.10/24",
+      "gatewayCIDR": "10.0.0.1/24",
+      "vethHost": "veth-ci-test",
+      "vethContainer": "ceth0",
+      "dns": ["8.8.8.8", "1.1.1.1"],
+      "firewallScript": "./configs/firewall-setup.sh"
+    }
+  }
+}
