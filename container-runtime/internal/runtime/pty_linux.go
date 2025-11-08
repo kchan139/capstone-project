@@ -7,6 +7,7 @@ import (
 
 	"github.com/containerd/console"
 )
+
 type HostConsole struct {
 	Host console.Console
 }
@@ -29,9 +30,9 @@ func SetupHostConsole() (*HostConsole, func(), error) {
 }
 
 type PtyFiles struct {
-	Master    *os.File
-	SlavePath string
-	SlaveFile *os.File
+	Master        *os.File
+	SlavePath     string
+	SlaveFile     *os.File
 	MasterConsole console.Console
 }
 
@@ -56,9 +57,9 @@ func SetupPty() (*PtyFiles, func(), error) {
 	}
 
 	return &PtyFiles{
-		Master:    masterFile,
-		SlavePath: slavePath,
-		SlaveFile: slaveFile,
+		Master:        masterFile,
+		SlavePath:     slavePath,
+		SlaveFile:     slaveFile,
 		MasterConsole: master,
 	}, cleanup, nil
 }

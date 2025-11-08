@@ -44,10 +44,9 @@ func childCommand(ctx *cli.Context) error {
 		if err := unix.IoctlSetInt(0, unix.TIOCSCTTY, 0); err != nil {
 			return fmt.Errorf("TIOCSCTTY: %w", err)
 		}
-		fmt.Printf("my pid: %d\n", os.Getpid())
-		fmt.Println("hahahah")
+		fmt.Printf("PID: %d\n", os.Getpid())
+		// fmt.Println("hahahah") haha cai dit con me may
 	}
-
 
 	// Set hostname
 	if err := syscall.Sethostname([]byte(config.Hostname)); err != nil {

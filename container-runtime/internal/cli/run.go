@@ -49,7 +49,6 @@ func runCommand(ctx *cli.Context) error {
 		return err
 	}
 
-
 	var extra []*os.File
 	var host *runtime.HostConsole
 	var pty *runtime.PtyFiles
@@ -68,7 +67,7 @@ func runCommand(ctx *cli.Context) error {
 			return err
 		}
 		defer closePty()
-		extra = []*os.File{childPipe,pty.SlaveFile}
+		extra = []*os.File{childPipe, pty.SlaveFile}
 	} else {
 		fmt.Printf("Starting container in non-interactive mode\n")
 		extra = []*os.File{childPipe}
@@ -78,27 +77,30 @@ func runCommand(ctx *cli.Context) error {
 
 	cmd.ExtraFiles = extra
 
-
 	cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3")
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-        Cloneflags:   syscall.CLONE_NEWUTS | syscall.CLONE_NEWNS | syscall.CLONE_NEWPID,
-        Unshareflags: syscall.CLONE_NEWNS,
-		Setsid: true,
-    }
-
+		Cloneflags:   syscall.CLONE_NEWUTS | syscall.CLONE_NEWNS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNET,
+		Unshareflags: syscall.CLONE_NEWNS,
+		Setsid:       true,
+	}
 
 	if err := cmd.Start(); err != nil {
-		pty.SlaveFile.Close()
 		parentPipe.Close()
 		childPipe.Close()
 		return err
 	}
-	pty.SlaveFile.Close()
+
+	if config.Process.Terminal {
+		if err := pty.SlaveFile.Close(); err != nil {
+			return fmt.Errorf("failed to close PTY slave file: %v", err)
+		}
+
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGWINCH)
+		stopResize := runtime.StartWinchForwarder(host.Host, pty.MasterConsole, sigCh)
+		defer stopResize()
+	}
 	childPipe.Close()
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGWINCH)
-	stopResize := runtime.StartWinchForwarder(host.Host, pty.MasterConsole, sigCh)
-	defer stopResize()
 
 	// Setup veth pair from parent side if network enabled
 	if config.Linux.Network != nil && config.Linux.Network.EnableNetwork {
@@ -155,19 +157,21 @@ func runCommand(ctx *cli.Context) error {
 	}
 
 	_, err = parentPipe.Write(configData)
+	parentPipe.Close()
 	if err != nil {
-		parentPipe.Close()
 		return fmt.Errorf("failed to send config: %v", err)
 	}
-	parentPipe.Close()
-	go func() {
-		_, _ = io.Copy(os.Stdout, pty.Master)
-	}()
 
-	// our terminal → child
-	go func() {
-		_, _ = io.Copy(pty.Master, os.Stdin)
-	}()
+	if config.Process.Terminal && pty != nil {
+		go func() {
+			_, _ = io.Copy(os.Stdout, pty.Master)
+		}()
+
+		// our terminal → child
+		go func() {
+			_, _ = io.Copy(pty.Master, os.Stdin)
+		}()
+	}
 
 	if err := cmd.Wait(); err != nil {
 		fmt.Printf("PARENT: Child exited with error: %v\n", err)
