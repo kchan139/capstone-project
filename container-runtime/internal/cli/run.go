@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -97,6 +98,7 @@ func runCommand(ctx *cli.Context) error {
 
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGWINCH)
+		defer signal.Stop(sigCh)
 		stopResize := runtime.StartWinchForwarder(host.Host, pty.MasterConsole, sigCh)
 		defer stopResize()
 	}
@@ -163,20 +165,35 @@ func runCommand(ctx *cli.Context) error {
 	}
 
 	if config.Process.Terminal && pty != nil {
+		var wg sync.WaitGroup
+		wg.Add(2)
+
 		go func() {
+			defer wg.Done()
 			_, _ = io.Copy(os.Stdout, pty.Master)
 		}()
 
 		// our terminal → child
 		go func() {
+			defer wg.Done()
 			_, _ = io.Copy(pty.Master, os.Stdin)
 		}()
-	}
 
-	if err := cmd.Wait(); err != nil {
-		fmt.Printf("PARENT: Child exited with error: %v\n", err)
+		// Wait for child process
+		if err := cmd.Wait(); err != nil {
+			fmt.Printf("PARENT: Child exited with error: %v\n", err)
+		} else {
+			fmt.Println("PARENT: Child completed successfully")
+		}
+
+		// Wait for I/O goroutines to finish
+		wg.Wait()
 	} else {
-		fmt.Println("PARENT: Child completed successfully")
+		if err := cmd.Wait(); err != nil {
+			fmt.Printf("PARENT: Child exited with error: %v\n", err)
+		} else {
+			fmt.Println("PARENT: Child completed successfully")
+		}
 	}
 
 	// Cleanup veth on exit
