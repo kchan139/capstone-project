@@ -14,6 +14,7 @@ require (
 
 require (
 	github.com/cilium/ebpf v0.16.0 // indirect
+	github.com/containerd/console v1.0.5 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect

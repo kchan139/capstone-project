@@ -3,13 +3,16 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"mrunc/internal/config"
 	"mrunc/internal/container"
 	"mrunc/internal/runtime"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/urfave/cli/v2"
@@ -46,31 +49,56 @@ func runCommand(ctx *cli.Context) error {
 		return err
 	}
 
-	cmd := exec.Command("/proc/self/exe", append([]string{"child"}, os.Args[2:]...)...)
-	cmd.ExtraFiles = []*os.File{childPipe}
 
+	var extra []*os.File
+	var host *runtime.HostConsole
+	var pty *runtime.PtyFiles
+	var restoreConsole func()
+	var closePty func()
 	if config.Process.Terminal {
 		fmt.Printf("Starting container in interactive mode\n")
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		host, restoreConsole, err = runtime.SetupHostConsole()
+		if err != nil {
+			return err
+		}
+		defer restoreConsole()
+		// 2. create pty pair
+		pty, closePty, err = runtime.SetupPty()
+		if err != nil {
+			return err
+		}
+		defer closePty()
+		extra = []*os.File{childPipe,pty.SlaveFile}
 	} else {
 		fmt.Printf("Starting container in non-interactive mode\n")
-		cmd.Stdin = nil
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		extra = []*os.File{childPipe}
+
 	}
+	cmd := exec.Command("/proc/self/exe", append([]string{"child"}, os.Args[2:]...)...)
+
+	cmd.ExtraFiles = extra
+
 
 	cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3")
-	cmd.SysProcAttr = runtime.CreateNamespaces()
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+        Cloneflags:   syscall.CLONE_NEWUTS | syscall.CLONE_NEWNS | syscall.CLONE_NEWPID,
+        Unshareflags: syscall.CLONE_NEWNS,
+		Setsid: true,
+    }
+
 
 	if err := cmd.Start(); err != nil {
+		pty.SlaveFile.Close()
 		parentPipe.Close()
 		childPipe.Close()
 		return err
 	}
-
+	pty.SlaveFile.Close()
 	childPipe.Close()
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGWINCH)
+	stopResize := runtime.StartWinchForwarder(host.Host, pty.MasterConsole, sigCh)
+	defer stopResize()
 
 	// Setup veth pair from parent side if network enabled
 	if config.Linux.Network != nil && config.Linux.Network.EnableNetwork {
@@ -132,6 +160,14 @@ func runCommand(ctx *cli.Context) error {
 		return fmt.Errorf("failed to send config: %v", err)
 	}
 	parentPipe.Close()
+	go func() {
+		_, _ = io.Copy(os.Stdout, pty.Master)
+	}()
+
+	// our terminal → child
+	go func() {
+		_, _ = io.Copy(pty.Master, os.Stdin)
+	}()
 
 	if err := cmd.Wait(); err != nil {
 		fmt.Printf("PARENT: Child exited with error: %v\n", err)
