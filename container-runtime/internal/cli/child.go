@@ -27,7 +27,25 @@ func childCommand(ctx *cli.Context) error {
 			fmt.Printf("Warning: setsid failed: %v\n", err)
 		}
 	} else {
-		fmt.Printf("Interactive mode: keeping terminal connection\n")
+
+		// receive slave from parent
+		slave := os.NewFile(uintptr(4), "pty-slave")
+		if slave == nil {
+			return fmt.Errorf("no slave fd")
+		}
+		defer slave.Close()
+		// dup slave → 0,1,2
+		for _, fd := range []int{0, 1, 2} {
+			if err := unix.Dup2(int(slave.Fd()), fd); err != nil {
+				return fmt.Errorf("dup2 %d: %w", fd, err)
+			}
+		}
+		// now fd 0 is the pty slave, make it controlling tty
+		if err := unix.IoctlSetInt(0, unix.TIOCSCTTY, 0); err != nil {
+			return fmt.Errorf("TIOCSCTTY: %w", err)
+		}
+		fmt.Printf("PID: %d\n", os.Getpid())
+		// fmt.Println("hahahah") haha cai dit con me may
 	}
 
 	// Set hostname
