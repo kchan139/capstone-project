@@ -78,11 +78,7 @@ func runCommand(ctx *cli.Context) error {
 	cmd.ExtraFiles = extra
 
 	cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3")
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Cloneflags:   syscall.CLONE_NEWUTS | syscall.CLONE_NEWNS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNET,
-		Unshareflags: syscall.CLONE_NEWNS,
-		Setsid:       true,
-	}
+	cmd.SysProcAttr = runtime.CreateNamespaces()
 
 	if err := cmd.Start(); err != nil {
 		parentPipe.Close()
