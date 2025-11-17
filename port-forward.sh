@@ -22,6 +22,6 @@ for mapping in $PORTS; do
     SSH_ARGS+=("-L" "${LOCAL_PORT}:${REMOTE_HOST}:${REMOTE_PORT}")
 done
 
-SSH_ARGS+=("-X")
+SSH_ARGS+=("-Y")
 
 ssh "${SSH_ARGS[@]}" "$USERNAME@$SERVER_IP" -p "$SSH_PORT"
