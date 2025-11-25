@@ -14,7 +14,7 @@ CONFIG_DIR=./configs/examples
 DEFAULT_CONFIG=$(CONFIG_DIR)/ubuntu.json
 TEST_CONFIG=$(CONFIG_DIR)/test-container.json
 
-# Go configuration  
+# Go configuration
 GO=go
 GOOS=$(shell $(GO) env GOOS)
 GOARCH=$(shell $(GO) env GOARCH)
@@ -43,7 +43,7 @@ build:
 	@mkdir -p $(BIN_DIR)
 	$(GO) build $(BUILD_FLAGS) -o $(BIN_DIR)/$(BINARY_NAME) $(CMD_DIR)
 	@echo "Build complete: $(BIN_DIR)/$(BINARY_NAME)"
-	@echo "Usage: sudo $(BIN_DIR)/$(BINARY_NAME) run <config.json>"
+	@echo "Usage: sudo $(BIN_DIR)/$(BINARY_NAME) run <name> <config.json>"
 
 # Build with race detection (for testing)
 build-race:

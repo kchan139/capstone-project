@@ -21,8 +21,8 @@ import (
 func runCommand(ctx *cli.Context) error {
 	var configPath string
 
-	if ctx.NArg() < 1 {
-		// No config specified → use default path
+	if ctx.NArg() < 2 {
+		// No container name and config specified → use default path
 		baseDir := os.Getenv("MRUNC_BASE")
 		if baseDir == "" {
 			baseDir = config.BaseImageDir
@@ -31,13 +31,15 @@ func runCommand(ctx *cli.Context) error {
 		fmt.Printf("No config specified, using default: %s\n", configPath)
 	} else {
 		// Use provided config
-		configPath = ctx.Args().Get(0)
+		configPath = ctx.Args().Get(1)
 	}
+	containerId := ctx.Args().Get(0)
 
 	config, err := container.LoadConfig(configPath)
 	if err != nil {
 		return err
 	}
+	config.ContainerId = containerId
 
 	childPipe, parentPipe, err := os.Pipe()
 	if err != nil {
@@ -84,6 +86,11 @@ func runCommand(ctx *cli.Context) error {
 		parentPipe.Close()
 		childPipe.Close()
 		return err
+	}
+	// setup cgroup
+
+	if err := runtime.CreateCgroup(config, cmd.Process.Pid); err != nil {
+		return fmt.Errorf("failed to create cgroup: %v", err)
 	}
 
 	if config.Process.Terminal {
