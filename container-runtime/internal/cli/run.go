@@ -88,7 +88,7 @@ func runCommand(ctx *cli.Context) error {
 		return err
 	}
 	// setup cgroup
-
+	fmt.Printf("child process : %d\n", cmd.Process.Pid)
 	if err := runtime.CreateCgroup(config, cmd.Process.Pid); err != nil {
 		return fmt.Errorf("failed to create cgroup: %v", err)
 	}

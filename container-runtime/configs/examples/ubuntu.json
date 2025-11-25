@@ -8,6 +8,26 @@
     "env": [
     ],
     "cwd": "/",
+    "capabilities": {
+       "bounding": [
+            "CAP_AUDIT_WRITE",
+            "CAP_KILL",
+            "CAP_NET_BIND_SERVICE"
+        ],
+       "permitted": [
+            "CAP_AUDIT_WRITE",
+            "CAP_NET_BIND_SERVICE"
+        ],
+       "inheritable": [
+            "CAP_AUDIT_WRITE"
+        ],
+        "effective": [
+            "CAP_AUDIT_WRITE"
+        ],
+        "ambient": [
+            "CAP_AUDIT_WRITE"
+        ]
+    },
     "terminal": true,
     "user": {"uid":0, "gid":0}
   },
