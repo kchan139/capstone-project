@@ -6,7 +6,7 @@ resource "digitalocean_firewall" "capstone" {
   ### SSH Access ###
 
   # Allow SSH on default port from trusted IPs.
-  # This rule is meant for initial Ansible provisioning.
+  # This rule is meant for initial Ansible provisioning and emergency access.
   # You should lock this port down afterward 
   # 
   # inbound_rule {
