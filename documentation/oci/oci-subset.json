@@ -1,0 +1,94 @@
+{
+    // MRUNC follows OCI 1.x structure, but implements only a subset.
+    "ociVersion": "1.1.0",
+    "process": {
+        "terminal": true,
+        "cwd": "/",
+        "args": [
+            "/bin/bash"
+        ],
+        "env": [            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        ],
+        "user": {
+            "uid": 0,
+            "gid": 0,
+            "additionalGids": [10, 20]
+        },
+        "noNewPrivileges": true,
+        "capabilities": {
+            "bounding":   ["CAP_CHOWN", "CAP_DAC_OVERRIDE"],
+            "effective":  ["CAP_CHOWN"],
+            "permitted":  ["CAP_CHOWN"],
+            "inheritable": [],
+            "ambient":     []
+        }
+    },
+    "root": {
+        "path": "rootfs",
+        "readonly": false
+    },
+	"hostname": "test-container",
+    "mounts": [
+        {
+            "destination": "/proc",
+            "type": "proc"
+        },
+        {
+            "destination": "/tmp",
+            "type": "tmpfs",
+            "source": "tmpfs",
+            "options": ["nosuid", "nodev", "noexec"]
+        },
+        {
+            "destination": "/mnt/data",
+            "type": "bind",
+            "source": "/data/host",
+            "options": ["rbind", "ro", "nosuid", "nodev", "noexec"]
+        }
+    ],
+    "linux": {
+        // Namespace configuration
+        "namespaces": [
+            { "type": "mount" },
+            { "type": "pid" },
+            { "type": "uts" },
+            { "type": "ipc" },     
+            { "type": "network" }   
+        ],
+        "maskedPaths": [],
+        "readonlyPaths": [],
+
+        "resources": {
+            "pids": {
+                "limit": 100
+            },
+            "cpu": {
+                "max": "50000 100000",
+                "weight": 200
+            },
+            "memory": {
+                "limit": 536870912,
+                "swap": 536870912     
+            },
+        },
+        "network": {
+			"enableNetwork": true,
+		      "containerIP": "10.0.0.2/24",
+		      "gatewayCIDR": "10.0.0.1/24",
+            "vethHost": "veth-mrunc-0",
+            "vethContainer": "ceth0",
+            "dns": ["8.8.8.8", "8.8.4.4", "1.1.1.1"],
+            "firewallScript": "./configs/firewall-setup.sh"
+		},
+        "seccomp": {
+            "defaultAction": "SCMP_ACT_KILL",
+            "architectures": ["SCMP_ARCH_X86_64"],
+            "syscalls": [
+                {
+                    "names": ["read", "write", "exit", "execve"],
+                    "action": "SCMP_ACT_ALLOW"
+                }
+            ]
+        }
+    }
+}
