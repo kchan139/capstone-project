@@ -1,46 +1,81 @@
 package cli
 
 import (
-	"fmt"
-	"github.com/urfave/cli/v2"
-	"os"
-	"bytes"
 	"encoding/json"
-	mySpecs "mrunc/pkg/specs"
+	"fmt"
 	"io"
-	"time"
 	"mrunc/internal/runtime"
+	mySpecs "mrunc/pkg/specs"
+	"os"
+	"os/exec"
+
+	"github.com/urfave/cli/v2"
+	"golang.org/x/sys/unix"
 )
 func intermediateCommand(ctx *cli.Context) error {
-	config, err := receiveConfigFromSocket()
+parent := os.NewFile(uintptr(3), "parent-sock")
+    defer parent.Close()
+	config, err := receiveConfigFrom(parent)
 	if err != nil {
 		return fmt.Errorf("child: failed to receive config: %v", err)
 	}
-	fmt.Println("intermediate called")
 	// setup cgroup
 	runtime.CreateCgroup(config, os.Getpid())
 
 	fmt.Println("Running inside limited cgroup for 10 seconds...")
-	time.Sleep(300 * time.Second)
-	
+
+
+	// passing the socket to the init process
+	passedSocket := os.NewFile(uintptr(4), "init-sock")
+	defer passedSocket.Close()
+	// passsing the exec.fifo files
+	fifo_fd := os.NewFile(uintptr(5), "fifo-file")
+	defer fifo_fd.Close()
+
+	cmd := exec.Command("/proc/self/exe", append([]string{"initproc"}, os.Args[2:]...)...)
+	// Mark all fds >=3 as CLOEXEC in one go.
+	// Kernel will skip stdio and anything already CLOEXEC.
+	_ = unix.CloseRange(3, ^uint(0), unix.CLOSE_RANGE_CLOEXEC)
+	cmd.ExtraFiles = []*os.File{passedSocket, fifo_fd}
+	cmd.SysProcAttr = runtime.CreateNamespaces()
+	if config.Process.Terminal {
+			fmt.Printf("Starting container in interactive mode\n")
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+	} else {
+		fmt.Printf("Starting container in non-interactive mode\n")
+		cmd.Stdin = nil
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	// writing the init PID to the parent process
+	if _, err := parent.Write([]byte(fmt.Sprintf("%d", cmd.Process.Pid))); err != nil {
+        return fmt.Errorf("write pid: %w", err)
+    }
+
+	// if err := cmd.Wait(); err != nil {
+	// 	fmt.Printf("Intermediate: Init exited with error: %v\n", err)
+	// } else {
+	// 	fmt.Println("Intermediate: Init completed successfully")
+	// }
+
+
+
 	return nil
 }
 
 
-func receiveConfigFromSocket() (*mySpecs.ContainerConfig, error) {
-	// hard-code the file descriptor
-	f := os.NewFile(uintptr(3), "parent-sock")
-	defer f.Close()
 
-	var buf bytes.Buffer
-
-	if _, err := io.Copy(&buf, f); err != nil {
-		return nil, err
-	}
-
-	var config mySpecs.ContainerConfig
-	if err := json.Unmarshal(buf.Bytes(), &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config JSON: %v", err)
-	}
-	return &config, nil
+func receiveConfigFrom(r io.Reader) (*mySpecs.ContainerConfig, error) {
+    // Use a decoder (stops after one JSON doc; no EOF needed)
+    dec := json.NewDecoder(r)
+    var cfg mySpecs.ContainerConfig
+    if err := dec.Decode(&cfg); err != nil {
+        return nil, fmt.Errorf("decode config: %w", err)
+    }
+    return &cfg, nil
 }

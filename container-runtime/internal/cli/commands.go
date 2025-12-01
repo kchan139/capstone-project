@@ -42,8 +42,20 @@ func NewApp() *cli.App {
 			},
 			{
 				Name:   "intermediate",
+				Hidden: true,
 				Usage:  "The intermediate process between parent process and init process",
 				Action: intermediateCommand,
+			},
+			{
+				Name:   "initproc",
+				Hidden: true,
+				Usage:  "The Init process that is waiting to run",
+				Action: initprocCommand,
+			},
+			{
+				Name:   "start",
+				Usage:  "Signal the created container to start",
+				Action: startCommand,
 			},
 		},
 	}
