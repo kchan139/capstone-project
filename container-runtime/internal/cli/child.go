@@ -122,6 +122,11 @@ func childCommand(ctx *cli.Context) error {
 		return fmt.Errorf("failed to set process user: %v", err)
 	}
 
+	// apply capabilities
+	if err := runtime.SetupCaps(config); err != nil {
+		return fmt.Errorf("failed to set the capabilities : %v", err)
+	}
+
 	// Execute the process (replace current process)
 	command := config.Process.Args[0]
 	args := config.Process.Args

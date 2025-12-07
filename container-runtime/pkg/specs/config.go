@@ -19,8 +19,17 @@ type ProcessConfig struct {
 	Cwd      string   `json:"cwd,omitempty"`
 	Terminal bool     `json:"terminal"`
 	User     *User    `json:"user,omitempty"`
-}
+	NoNewPrivileges bool     `json:"noNewPrivileges"`
 
+	Capabilities *ProcessCapabilities  `json:"capabilities,omitempty"`
+}
+type ProcessCapabilities struct {
+	Bounding    []string `json:"bounding,omitempty"`
+	Effective   []string `json:"effective,omitempty"`
+	Inheritable []string `json:"inheritable,omitempty"`
+	Permitted   []string `json:"permitted,omitempty"`
+	Ambient     []string `json:"ambient,omitempty"`
+}
 type User struct {
 	UID            int   `json:"uid"`
 	GID            int   `json:"gid"`
