@@ -6,17 +6,25 @@ import (
 	"strings"
 
 	mySpecs "mrunc/pkg/specs"
-
+	"os/exec"
 	"github.com/moby/sys/capability"
 	"golang.org/x/sys/unix"
 )
+// to test
+func PrintCaps() error {
+	cmd := exec.Command("bash", "-c",
+		fmt.Sprintf(`grep Cap /proc/self/status | while read line; do echo $line; capsh --decode=$(echo $line | awk '{print $2}'); done`))
 
-func SetupCaps(config *mySpecs.ContainerConfig) error {
-	// TODO:: needing to implement the nonewprivilege field
-	// must specify no new privilege, otherwise it may become like root
-	if err := unix.Prctl(unix.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0); err != nil {
-		return fmt.Errorf("failed to set no_new_privs: %v", err)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to get capabilities: %v", err)
 	}
+
+	fmt.Println(string(output))
+	return nil
+}
+func SetupCaps(config *mySpecs.ContainerConfig) error {
+
 	if config.Process.Capabilities == nil {
 		log.Println("WARNING: No capabilities specified - process will have full root capabilities")
 		return nil
@@ -96,6 +104,14 @@ func SetupCaps(config *mySpecs.ContainerConfig) error {
 	// Apply all capability changes at once
 	if err := caps.Apply(capability.CAPS | capability.BOUNDS | capability.AMBS); err != nil {
 		return fmt.Errorf("failed to apply capabilities: %v", err)
+	}
+
+	// TODO:: needing to implement the nonewprivilege field
+	// must specify no new privilege, otherwise it may become like root
+	if config.Process.NoNewPrivileges {
+		if err := unix.Prctl(unix.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0); err != nil {
+			return fmt.Errorf("failed to set no_new_privs: %v", err)
+		}
 	}
 
 	return nil

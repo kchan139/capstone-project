@@ -10,7 +10,6 @@ import (
 	"os"
 	"strconv"
 	"syscall"
-	"time"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/sys/unix"
@@ -128,7 +127,6 @@ func childCommand(ctx *cli.Context) error {
 		return fmt.Errorf("failed to set the capabilities : %v", err)
 	}
 
-	time.Sleep(120 *time.Second)
 	// Execute the process (replace current process)
 	command := config.Process.Args[0]
 	args := config.Process.Args

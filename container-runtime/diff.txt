@@ -1,0 +1,118 @@
+diff --git a/container-runtime/configs/examples/ubuntu.json b/container-runtime/configs/examples/ubuntu.json
+index b929e65..a26cddf 100644
+--- a/container-runtime/configs/examples/ubuntu.json
++++ b/container-runtime/configs/examples/ubuntu.json
+@@ -8,6 +8,7 @@
+     "env": [
+     ],
+     "cwd": "/",
++    "noNewPrivileges": false,
+     "capabilities": {
+        "bounding": [
+             "CAP_AUDIT_WRITE",
+@@ -16,7 +17,7 @@
+         ],
+        "permitted": [
+             "CAP_AUDIT_WRITE",
+-            "CAP_NET_BIND_SERVICE"
++              "CAP_KILL"
+         ],
+        "inheritable": [
+             "CAP_AUDIT_WRITE"
+diff --git a/container-runtime/internal/cli/child.go b/container-runtime/internal/cli/child.go
+index b11a11f..8aff5f2 100644
+--- a/container-runtime/internal/cli/child.go
++++ b/container-runtime/internal/cli/child.go
+@@ -10,7 +10,6 @@ import (
+ 	"os"
+ 	"strconv"
+ 	"syscall"
+-	"time"
+ 
+ 	"github.com/urfave/cli/v2"
+ 	"golang.org/x/sys/unix"
+@@ -128,7 +127,6 @@ func childCommand(ctx *cli.Context) error {
+ 		return fmt.Errorf("failed to set the capabilities : %v", err)
+ 	}
+ 
+-	time.Sleep(120 *time.Second)
+ 	// Execute the process (replace current process)
+ 	command := config.Process.Args[0]
+ 	args := config.Process.Args
+diff --git a/container-runtime/internal/cli/run.go b/container-runtime/internal/cli/run.go
+index c57c59f..34ef766 100644
+--- a/container-runtime/internal/cli/run.go
++++ b/container-runtime/internal/cli/run.go
+@@ -88,6 +88,8 @@ func runCommand(ctx *cli.Context) error {
+ 		return err
+ 	}
+ 	// setup cgroup
++	fmt.Printf("run process : %d\n", os.Getpid())
++
+ 	fmt.Printf("child process : %d\n", cmd.Process.Pid)
+ 	if err := runtime.CreateCgroup(config, cmd.Process.Pid); err != nil {
+ 		return fmt.Errorf("failed to create cgroup: %v", err)
+diff --git a/container-runtime/internal/runtime/capabilities.go b/container-runtime/internal/runtime/capabilities.go
+index 7acee46..4dc355a 100644
+--- a/container-runtime/internal/runtime/capabilities.go
++++ b/container-runtime/internal/runtime/capabilities.go
+@@ -6,17 +6,25 @@ import (
+ 	"strings"
+ 
+ 	mySpecs "mrunc/pkg/specs"
+-
++	"os/exec"
+ 	"github.com/moby/sys/capability"
+ 	"golang.org/x/sys/unix"
+ )
++// to test
++func PrintCaps() error {
++	cmd := exec.Command("bash", "-c",
++		fmt.Sprintf(`grep Cap /proc/self/status | while read line; do echo $line; capsh --decode=$(echo $line | awk '{print $2}'); done`))
+ 
+-func SetupCaps(config *mySpecs.ContainerConfig) error {
+-	// TODO:: needing to implement the nonewprivilege field
+-	// must specify no new privilege, otherwise it may become like root
+-	if err := unix.Prctl(unix.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0); err != nil {
+-		return fmt.Errorf("failed to set no_new_privs: %v", err)
++	output, err := cmd.CombinedOutput()
++	if err != nil {
++		return fmt.Errorf("failed to get capabilities: %v", err)
+ 	}
++
++	fmt.Println(string(output))
++	return nil
++}
++func SetupCaps(config *mySpecs.ContainerConfig) error {
++
+ 	if config.Process.Capabilities == nil {
+ 		log.Println("WARNING: No capabilities specified - process will have full root capabilities")
+ 		return nil
+@@ -98,6 +106,14 @@ func SetupCaps(config *mySpecs.ContainerConfig) error {
+ 		return fmt.Errorf("failed to apply capabilities: %v", err)
+ 	}
+ 
++	// TODO:: needing to implement the nonewprivilege field
++	// must specify no new privilege, otherwise it may become like root
++	if config.Process.NoNewPrivileges {
++		if err := unix.Prctl(unix.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0); err != nil {
++			return fmt.Errorf("failed to set no_new_privs: %v", err)
++		}
++	}
++
+ 	return nil
+ }
+ 
+diff --git a/container-runtime/pkg/specs/config.go b/container-runtime/pkg/specs/config.go
+index b448a24..3a2c581 100644
+--- a/container-runtime/pkg/specs/config.go
++++ b/container-runtime/pkg/specs/config.go
+@@ -19,6 +19,8 @@ type ProcessConfig struct {
+ 	Cwd      string   `json:"cwd,omitempty"`
+ 	Terminal bool     `json:"terminal"`
+ 	User     *User    `json:"user,omitempty"`
++	NoNewPrivileges bool     `json:"noNewPrivileges"`
++
+ 	Capabilities *ProcessCapabilities  `json:"capabilities,omitempty"`
+ }
+ type ProcessCapabilities struct {
