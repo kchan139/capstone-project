@@ -39,6 +39,19 @@ type User struct {
 type LinuxConfig struct {
 	Resources *LinuxResources `json:"resources,omitempty"`
 	Network   *LinuxNetwork   `json:"network,omitempty"`
+	SeccompConfig *SeccompConfig `json:"seccomp,omitempty"`
+
+}
+
+type SeccompConfig struct {
+    DefaultAction string          `json:"defaultAction"`
+    Architectures []string        `json:"architectures,omitempty"`
+    Syscalls      []SyscallConfig `json:"syscalls,omitempty"`
+}
+
+type SyscallConfig struct {
+    Names  []string `json:"names"`
+    Action string   `json:"action"`
 }
 
 type LinuxResources struct {
