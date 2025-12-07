@@ -13,7 +13,7 @@ import (
 // to test
 func PrintCaps() error {
 	cmd := exec.Command("bash", "-c",
-		"grep Cap /proc/self/status | x while read line; do echo $line; capsh --decode=$(echo $line | awk '{print $2}'); done")
+		"grep Cap /proc/self/status | while read line; do echo $line; capsh --decode=$(echo $line | awk '{print $2}'); done")
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
