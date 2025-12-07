@@ -143,7 +143,7 @@ jobs:
           working-directory: container-runtime
 
   # =========================
-  #  Job 3: Functional Tests 
+  #  Job 3: Functional Tests
   # =========================
   functional-tests:
     name: Functional Tests
@@ -176,7 +176,7 @@ jobs:
         run: |
           echo "Initializing Ubuntu rootfs..."
           sudo ./bin/mrunc init
-          
+
           # Verify rootfs was created
           if [ ! -f /var/lib/mrunc/images/ubuntu/etc/os-release ]; then
             echo "ERROR: Rootfs initialization failed"
@@ -189,13 +189,13 @@ jobs:
         timeout-minutes: 3
         run: |
           echo "Running functional tests with ci-test.json..."
-          
+
           # Run container test
-          sudo ./bin/mrunc run ./configs/examples/ci-test.json || {
+          sudo ./bin/mrunc run ci-test-container ./configs/examples/ci-test.json || {
             echo "ERROR: Container execution failed"
             exit 1
           }
-          
+
           echo "✓ All functional tests passed:"
           echo "  - Container execution"
           echo "  - Namespace isolation"

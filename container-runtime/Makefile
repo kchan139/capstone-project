@@ -43,7 +43,7 @@ build:
 	@mkdir -p $(BIN_DIR)
 	$(GO) build $(BUILD_FLAGS) -o $(BIN_DIR)/$(BINARY_NAME) $(CMD_DIR)
 	@echo "Build complete: $(BIN_DIR)/$(BINARY_NAME)"
-	@echo "Usage: sudo $(BIN_DIR)/$(BINARY_NAME) run <name> <config.json>"
+	@echo "Usage: sudo $(BIN_DIR)/$(BINARY_NAME) run <container-name> <config.json>"
 
 # Build with race detection (for testing)
 build-race:
@@ -56,33 +56,35 @@ run-dev:
 	@echo "Running mrunc in development mode with default config..."
 	@echo "Config: $(DEFAULT_CONFIG)"
 	@if [ ! -f "$(DEFAULT_CONFIG)" ]; then echo "Error: Config file $(DEFAULT_CONFIG) not found"; exit 1; fi
-	sudo $(GO) run $(CMD_DIR) run $(DEFAULT_CONFIG)
+	sudo $(GO) run $(CMD_DIR) run dev $(DEFAULT_CONFIG)
 
 # Run with Ubuntu container config
 run-ubuntu:
 	@echo "Running mrunc with Ubuntu config..."
 	@if [ ! -f "$(DEFAULT_CONFIG)" ]; then echo "Error: Config file $(DEFAULT_CONFIG) not found"; exit 1; fi
-	sudo $(GO) run $(CMD_DIR) run $(DEFAULT_CONFIG)
+	sudo $(GO) run $(CMD_DIR) run ubuntu $(DEFAULT_CONFIG)
 
-# Run with custom config (usage: make run-custom CONFIG=path/to/config.json)
+# Run with custom config (usage: make run-custom NAME=mycontainer CONFIG=path/to/config.json)
 run-custom:
-	@if [ -z "$(CONFIG)" ]; then echo "Usage: make run-custom CONFIG=path/to/config.json"; exit 1; fi
+	@if [ -z "$(NAME)" ]; then echo "Usage: make run-custom NAME=<container-name> CONFIG=path/to/config.json"; exit 1; fi
+	@if [ -z "$(CONFIG)" ]; then echo "Usage: make run-custom NAME=<container-name> CONFIG=path/to/config.json"; exit 1; fi
 	@if [ ! -f "$(CONFIG)" ]; then echo "Error: Config file $(CONFIG) not found"; exit 1; fi
 	@echo "Running mrunc with custom config: $(CONFIG)"
-	sudo $(GO) run $(CMD_DIR) run $(CONFIG)
+	sudo $(GO) run $(CMD_DIR) run $(NAME) $(CONFIG)
 
 # Run built binary with default config
 run: build
 	@echo "Running built binary with default config..."
 	@if [ ! -f "$(DEFAULT_CONFIG)" ]; then echo "Error: Config file $(DEFAULT_CONFIG) not found"; exit 1; fi
-	sudo ./$(BIN_DIR)/$(BINARY_NAME) run $(DEFAULT_CONFIG)
+	sudo ./$(BIN_DIR)/$(BINARY_NAME) run default $(DEFAULT_CONFIG)
 
-# Run built binary with custom config (usage: make run-bin CONFIG=path/to/config.json)
+# Run built binary with custom config (usage: make run-bin NAME=mycontainer CONFIG=path/to/config.json)
 run-bin: build
-	@if [ -z "$(CONFIG)" ]; then echo "Usage: make run-bin CONFIG=path/to/config.json"; exit 1; fi
+	@if [ -z "$(NAME)" ]; then echo "Usage: make run-bin NAME=<container-name> CONFIG=path/to/config.json"; exit 1; fi
+	@if [ -z "$(CONFIG)" ]; then echo "Usage: make run-bin NAME=<container-name> CONFIG=path/to/config.json"; exit 1; fi
 	@if [ ! -f "$(CONFIG)" ]; then echo "Error: Config file $(CONFIG) not found"; exit 1; fi
 	@echo "Running built binary with config: $(CONFIG)"
-	sudo ./$(BIN_DIR)/$(BINARY_NAME) run $(CONFIG)
+	sudo ./$(BIN_DIR)/$(BINARY_NAME) run $(NAME) $(CONFIG)
 
 # Create a container with default config (usage: make create NAME=mycontainer)
 create: build
@@ -130,10 +132,10 @@ help:
 	@echo "  run-dev        - Quick run with go run (default config)"
 	@echo "  run-ubuntu     - Run with Ubuntu config via go run"
 	@echo "  run-custom     - Run with custom config via go run"
-	@echo "                   Usage: make run-custom CONFIG=path/to/config.json"
+	@echo "                   Usage: make run-custom NAME=<container-name> CONFIG=path/to/config.json"
 	@echo "  run            - Run built binary with default config"
 	@echo "  run-bin        - Run built binary with custom config"
-	@echo "                   Usage: make run-bin CONFIG=path/to/config.json"
+	@echo "                   Usage: make run-bin NAME=<container-name> CONFIG=path/to/config.json"
 	@echo ""
 	@echo "CONTAINER COMMANDS:"
 	@echo "  create         - Create a container"
