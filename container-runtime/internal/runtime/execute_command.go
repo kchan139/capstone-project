@@ -8,34 +8,29 @@ import (
 	"syscall"
 )
 
-func ExecuteCommand(command string, args []string, env []string) error {
-	// Try direct execution first (like real runtimes)
-	if err := tryDirectExec(command, args, env); err == nil {
-		return nil
+// PrepareExec resolves the command path BEFORE seccomp is applied
+// This avoids needing stat/access syscalls after seccomp
+func PrepareExec(command string, args []string, env []string) (string, []string, error) {
+	// If absolute path, use directly
+	if filepath.IsAbs(command) {
+		return command, args, nil
 	}
 
-	// Fall back to PATH resolution
+	// Try PATH resolution
 	if resolvedPath, err := resolvePath(command, env); err == nil {
 		args[0] = resolvedPath
-		return syscall.Exec(resolvedPath, args, env)
+		return resolvedPath, args, nil
 	}
 
-	// Last resort: shell (but log a warning)
-	fmt.Printf("Warning: Using shell execution for '%s' - potential security risk\n", command)
+	// Fall back to shell
 	shellCmd := strings.Join(args, " ")
-	return syscall.Exec("/bin/sh", []string{"/bin/sh", "-c", shellCmd}, env)
+	return "/bin/sh", []string{"/bin/sh", "-c", shellCmd}, nil
 }
 
-func tryDirectExec(command string, args []string, env []string) error {
-	if filepath.IsAbs(command) {
-		fmt.Printf("[DEBUG] Executing: %s %+v\n", command, args)
-		if err := syscall.Exec(command, args, env); err != nil {
-			fmt.Fprintf(os.Stderr, "[ERROR] syscall.Exec failed: %v\n", err)
-			os.Exit(1)
-		}
-
-	}
-	return fmt.Errorf("not absolute path")
+// ExecuteCommand performs the actual exec - call AFTER seccomp is applied
+// This only needs the execve syscall
+func ExecuteCommand(execPath string, args []string, env []string) error {
+	return syscall.Exec(execPath, args, env)
 }
 
 func resolvePath(command string, env []string) (string, error) {

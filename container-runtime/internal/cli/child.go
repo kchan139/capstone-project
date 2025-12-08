@@ -122,17 +122,31 @@ func childCommand(ctx *cli.Context) error {
 		return fmt.Errorf("failed to set process user: %v", err)
 	}
 
-	// apply capabilities
-	if err := runtime.SetupCaps(config); err != nil {
-		return fmt.Errorf("failed to set the capabilities : %v", err)
-	}
+
+
 
 	// Execute the process (replace current process)
 	command := config.Process.Args[0]
 	args := config.Process.Args
 	env := os.Environ()
 
-	return runtime.ExecuteCommand(command, args, env)
+	execPath, execArgs, err := runtime.PrepareExec(command, args, env)
+	if err != nil {
+		return fmt.Errorf("failed to prepare exec: %v", err)
+	}
+
+	// apply capabilities
+	if err := runtime.SetupCaps(config); err != nil {
+		return fmt.Errorf("failed to set the capabilities : %v", err)
+	}
+
+
+	// apply seccomp
+	if err := runtime.SetupSeccomp(config.Linux.SeccompConfig); err != nil {
+		return fmt.Errorf("failed to set the seccomp : %v", err)
+	}
+
+	return  runtime.ExecuteCommand(execPath, execArgs, env)
 }
 
 // receiveConfigFromPipe reads configuration from pipe passed by parent
