@@ -4,11 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"golang.org/x/sys/unix"
+	"github.com/containerd/console"
 	"mrunc/internal/config"
 	"mrunc/internal/container"
 	"mrunc/internal/runtime"
 	"os"
 	"os/exec"
+	"mrunc/internal/utils"
+
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -53,9 +57,8 @@ func runCommand(ctx *cli.Context) error {
 
 	var extra []*os.File
 	var host *runtime.HostConsole
-	var pty *runtime.PtyFiles
+	var parentSock, childSock *os.File
 	var restoreConsole func()
-	var closePty func()
 	if config.Process.Terminal {
 		fmt.Printf("Starting container in interactive mode\n")
 		host, restoreConsole, err = runtime.SetupHostConsole()
@@ -63,13 +66,14 @@ func runCommand(ctx *cli.Context) error {
 			return err
 		}
 		defer restoreConsole()
-		// 2. create pty pair
-		pty, closePty, err = runtime.SetupPty()
+		// 2. create socket pair
+		parentSock, childSock, err = utils.SocketPair()
+		fmt.Printf("DEBUG: Created socketpair - parent fd=%d, child fd=%d\n",
+        parentSock.Fd(), childSock.Fd())
 		if err != nil {
 			return err
 		}
-		defer closePty()
-		extra = []*os.File{childPipe, pty.SlaveFile}
+		extra = []*os.File{childPipe, childSock}
 	} else {
 		fmt.Printf("Starting container in non-interactive mode\n")
 		extra = []*os.File{childPipe}
@@ -82,29 +86,69 @@ func runCommand(ctx *cli.Context) error {
 	cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3")
 	cmd.SysProcAttr = runtime.CreateNamespaces()
 
+
 	if err := cmd.Start(); err != nil {
 		parentPipe.Close()
 		childPipe.Close()
 		return err
 	}
 	// setup cgroup
-	fmt.Printf("run process : %d\n", os.Getpid())
 
-	fmt.Printf("child process : %d\n", cmd.Process.Pid)
 	if err := runtime.CreateCgroup(config, cmd.Process.Pid); err != nil {
 		return fmt.Errorf("failed to create cgroup: %v", err)
 	}
 
+	_, err = parentPipe.Write(configData)
+	parentPipe.Close()
+	if err != nil {
+		return fmt.Errorf("failed to send config: %v", err)
+	}
+
 	if config.Process.Terminal {
-		if err := pty.SlaveFile.Close(); err != nil {
-			return fmt.Errorf("failed to close PTY slave file: %v", err)
-		}
+		fmt.Printf("DEBUG: Closing child socket in parent\n")
+		childSock.Close()
+		fmt.Printf("DEBUG: Waiting to receive FD from parent socket fd=%d\n", parentSock.Fd())
+		// receive master side of pty
+		buf := make([]byte, 1)
+        oob := make([]byte, unix.CmsgSpace(4))
+        _, oobn, _, _, err := unix.Recvmsg(int(parentSock.Fd()), buf, oob, 0)
+        if err != nil {
+            return fmt.Errorf("recvmsg: %w", err)
+        }
+
+        msgs, err := unix.ParseSocketControlMessage(oob[:oobn])
+        if err != nil {
+            return fmt.Errorf("parse control message: %w", err)
+        }
+
+        fds, err := unix.ParseUnixRights(&msgs[0])
+        if err != nil {
+            return fmt.Errorf("parse unix rights: %w", err)
+        }
+
+        masterFd := fds[0]
+		fmt.Printf("DEBUG: Received master FD: %d\n", masterFd)
+
+        masterFile := os.NewFile(uintptr(masterFd), "pty-master")
+        masterConsole, err := console.ConsoleFromFile(masterFile)
+        if err != nil {
+            return fmt.Errorf("console from file: %w", err)
+        }
+        defer masterConsole.Close()
 
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGWINCH)
 		defer signal.Stop(sigCh)
-		stopResize := runtime.StartWinchForwarder(host.Host, pty.MasterConsole, sigCh)
+		stopResize := runtime.StartWinchForwarder(host.Host, masterConsole, sigCh)
 		defer stopResize()
+
+
+		go func() {
+            _, _ = io.Copy(os.Stdout, masterConsole)
+        }()
+        go func() {
+            _, _ = io.Copy(masterConsole, os.Stdin)
+        }()
 	}
 	childPipe.Close()
 
@@ -162,22 +206,7 @@ func runCommand(ctx *cli.Context) error {
 		}
 	}
 
-	_, err = parentPipe.Write(configData)
-	parentPipe.Close()
-	if err != nil {
-		return fmt.Errorf("failed to send config: %v", err)
-	}
 
-	if config.Process.Terminal && pty != nil {
-		go func() {
-			_, _ = io.Copy(os.Stdout, pty.Master)
-		}()
-
-		// our terminal → child
-		go func() {
-			_, _ = io.Copy(pty.Master, os.Stdin)
-		}()
-	}
 
 	if err := cmd.Wait(); err != nil {
 		fmt.Printf("PARENT: Child exited with error: %v\n", err)
