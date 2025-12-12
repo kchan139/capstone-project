@@ -62,6 +62,12 @@ jobs:
           make build
           ls -la bin/
 
+      - name: Run unit tests
+        working-directory: container-runtime
+        run: |
+          echo "Running unit tests..."
+          make test-unit
+
       - name: Verify mrunc binary
         working-directory: container-runtime
         run: |
@@ -190,7 +196,13 @@ jobs:
           fi
           echo "✓ Rootfs initialized successfully"
 
-      - name: Run tests
+      - name: Run all tests
+        working-directory: container-runtime
+        run: |
+          echo "Running all tests..."
+          make test-all
+
+      - name: Run tests using config file
         working-directory: container-runtime
         timeout-minutes: 3
         run: |

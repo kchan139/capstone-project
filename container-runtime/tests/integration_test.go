@@ -17,7 +17,7 @@ import (
 func TestBinaryBuild(t *testing.T) {
 	// Test that the binary can be built
 	cmd := exec.Command("make", "build")
-	cmd.Dir = filepath.Join("..", "container-runtime")
+	cmd.Dir = filepath.Join("..", "..", "container-runtime")
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -25,14 +25,14 @@ func TestBinaryBuild(t *testing.T) {
 	}
 
 	// Verify binary exists
-	binaryPath := filepath.Join("..", "container-runtime", "bin", "mrunc")
+	binaryPath := filepath.Join("..", "..", "container-runtime", "bin", "mrunc")
 	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
 		t.Fatal("Binary was not created after build")
 	}
 }
 
 func TestBinaryVersion(t *testing.T) {
-	binaryPath := filepath.Join("..", "container-runtime", "bin", "mrunc")
+	binaryPath := filepath.Join("..", "..", "container-runtime", "bin", "mrunc")
 
 	// Skip if binary doesn't exist
 	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
@@ -72,8 +72,8 @@ func TestBinaryVersion(t *testing.T) {
 func TestConfigParsing(t *testing.T) {
 	// Test that we can parse the example configs
 	configFiles := []string{
-		filepath.Join("..", "container-runtime", "configs", "examples", "ubuntu.json"),
-		filepath.Join("..", "container-runtime", "configs", "examples", "ci-test.json"),
+		filepath.Join("..", "..", "container-runtime", "configs", "examples", "ubuntu.json"),
+		filepath.Join("..", "..", "container-runtime", "configs", "examples", "ci-test.json"),
 	}
 
 	for _, configFile := range configFiles {
