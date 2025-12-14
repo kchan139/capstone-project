@@ -21,34 +21,6 @@ func childCommand(ctx *cli.Context) error {
 		return fmt.Errorf("child: failed to receive config: %v", err)
 	}
 
-	if !config.Process.Terminal {
-		fmt.Printf("Non-interactive mode: detaching from terminal\n")
-		if _, err := syscall.Setsid(); err != nil && err != syscall.EPERM {
-			fmt.Printf("Warning: setsid failed: %v\n", err)
-		}
-	} else {
-		if _, err := unix.Setsid(); err != nil {
-			return fmt.Errorf("setsid: %w", err)
-		}
-
-		// receive slave from parent
-		slave := os.NewFile(uintptr(4), "pty-slave")
-		if slave == nil {
-			return fmt.Errorf("no slave fd")
-		}
-		defer slave.Close()
-		// dup slave → 0,1,2
-		for _, fd := range []int{0, 1, 2} {
-			if err := unix.Dup2(int(slave.Fd()), fd); err != nil {
-				return fmt.Errorf("dup2 %d: %w", fd, err)
-			}
-		}
-		// now fd 0 is the pty slave, make it controlling tty
-		if err := unix.IoctlSetInt(0, unix.TIOCSCTTY, 0); err != nil {
-			return fmt.Errorf("TIOCSCTTY: %w", err)
-		}
-		// fmt.Println("hahahah") haha cai dit con me may
-	}
 
 	// Set hostname
 	if err := syscall.Sethostname([]byte(config.Hostname)); err != nil {
@@ -86,6 +58,62 @@ func childCommand(ctx *cli.Context) error {
 	if err := syscall.Mount("proc", "proc", "proc", 0, ""); err != nil {
 		return fmt.Errorf("failed to mount proc: %v", err)
 	}
+
+	syscall.Mount(
+		"devpts",                  // source
+		"/dev/pts",                // target
+		"devpts",                  // filesystem type
+		syscall.MS_NOSUID|syscall.MS_NOEXEC, // flags
+		"newinstance,ptmxmode=0666,mode=0620,gid=5", // data
+	)
+
+
+	if !config.Process.Terminal {
+		fmt.Printf("Non-interactive mode: detaching from terminal\n")
+		if _, err := syscall.Setsid(); err != nil && err != syscall.EPERM {
+			fmt.Printf("Warning: setsid failed: %v\n", err)
+		}
+	} else {
+		if _, err := unix.Setsid(); err != nil {
+			return fmt.Errorf("setsid: %w", err)
+		}
+		fmt.Printf("DEBUG CHILD: Looking for console socket at FD 4\n")
+		consoleSock := os.NewFile(uintptr(4), "console-socket")
+        if consoleSock == nil {
+            return fmt.Errorf("no console socket")
+        }
+        defer consoleSock.Close()
+		fmt.Printf("DEBUG CHILD: Got console socket, fd=%d\n", consoleSock.Fd())
+		// ======= create pty pair
+		pty, closePty, err := runtime.SetupPty()
+        if err != nil {
+            return fmt.Errorf("setup pty: %w", err)
+        }
+        defer closePty()
+		fmt.Printf("DEBUG CHILD: Created PTY, master fd=%d\n", pty.Master.Fd())
+        // ======= Send master FD back to parent via socket
+        rights := unix.UnixRights(int(pty.Master.Fd()))
+        dummy := []byte{0}
+        if err := unix.Sendmsg(int(consoleSock.Fd()), dummy, rights, nil, 0); err != nil {
+            return fmt.Errorf("sendmsg: %w", err)
+        }
+		 fmt.Printf("DEBUG CHILD: Sent master FD successfully\n")
+        // Close master in child - parent owns it now
+        pty.Master.Close()
+
+
+		// dup slave → 0,1,2
+		for _, fd := range []int{0, 1, 2} {
+			if err := unix.Dup2(int(pty.SlaveFile.Fd()), fd); err != nil {
+				return fmt.Errorf("dup2 %d: %w", fd, err)
+			}
+		}
+		// now fd 0 is the pty slave, make it controlling tty
+		if err := unix.IoctlSetInt(0, unix.TIOCSCTTY, 0); err != nil {
+			return fmt.Errorf("TIOCSCTTY: %w", err)
+		}
+	}
+
 
 	// Setup network namespace
 	if err := runtime.SetupLoopback(); err != nil {
