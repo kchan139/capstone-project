@@ -6,6 +6,7 @@ type ContainerConfig struct {
 	Hostname    string        `json:"hostname,omitempty"`
 	ContainerId string        `json:"containerId,omitempty"`
 	Linux       LinuxConfig   `json:"linux"`
+	Mounts		[]MountConfig	  `json:"mounts"`
 }
 
 type RootfsConfig struct {
@@ -83,4 +84,11 @@ type LinuxNetwork struct {
 	VethContainer  string   `json:"vethContainer"`
 	DNS            []string `json:"dns,omitempty"`
 	FirewallScript string   `json:"firewallScript,omitempty"`
+}
+
+type MountConfig struct {
+	Destination string `json:"destination"`
+	Type string `json:"type"`
+	Source string `json:"source"`
+	Options []string `json:"options,omitempty"`
 }
