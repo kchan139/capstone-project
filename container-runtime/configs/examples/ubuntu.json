@@ -33,6 +33,26 @@
     "user": {"uid":0, "gid":0}
   },
   "hostname":"mrunc",
+  "mounts": [
+    {
+      "destination": "/proc",
+      "type": "proc",
+      "source": "proc"
+    },
+    {
+      "destination": "/dev/pts",
+      "type": "devpts",
+      "source": "devpts",
+      "options": [
+        "nosuid",
+        "noexec",
+        "newinstance",
+        "ptmxmode=0666",
+        "mode=0620",
+        "gid=5"
+      ]
+    }
+  ],
   "linux": {
     "resources": {
       "cpu": {

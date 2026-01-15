@@ -10,7 +10,8 @@ import (
 	"os"
 	"strconv"
 	"syscall"
-
+	"strings"
+	"path/filepath"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/sys/unix"
 )
@@ -27,6 +28,9 @@ func childCommand(ctx *cli.Context) error {
 		return fmt.Errorf("failed to set hostname: %v", err)
 	}
 
+
+
+
 	root_fs := config.RootFS.Path
 	root_fs_putold := config.RootFS.Path + "/put_old"
 	os.MkdirAll(root_fs_putold, 0755)
@@ -34,6 +38,57 @@ func childCommand(ctx *cli.Context) error {
 	if err := unix.Mount(root_fs, root_fs, "", unix.MS_BIND, ""); err != nil {
 		panic(fmt.Errorf("bind mount failed: %w", err))
 	}
+	// mount directories
+	fmt.Printf("DEBUG: Number of mounts: %d\n", len(config.Mounts))
+	for i,mount := range config.Mounts {
+		fmt.Printf("DEBUG: Mount %d: %+v\n", i, mount)
+		destination := filepath.Join(root_fs, mount.Destination)
+		if err := os.MkdirAll(destination, 0755); err != nil {
+			return fmt.Errorf("failed to create mount point %s: %v", destination, err)
+		}
+		var flags uintptr = 0
+		var dataOpts []string
+
+		for _, opt := range mount.Options {
+			switch opt {
+			case "nosuid":
+				flags |= syscall.MS_NOSUID
+			case "noexec":
+				flags |= syscall.MS_NOEXEC
+			case "nodev":
+				flags |= syscall.MS_NODEV
+			case "ro", "readonly":
+				flags |= syscall.MS_RDONLY
+			case "bind":
+				flags |= syscall.MS_BIND
+			case "rbind":
+				flags |= syscall.MS_BIND | syscall.MS_REC
+			 case "relatime":
+            	flags |= syscall.MS_RELATIME
+			case "noatime":
+				flags |= syscall.MS_NOATIME
+			case "strictatime":
+				flags |= syscall.MS_STRICTATIME
+			default:
+				dataOpts = append(dataOpts, opt)
+			}
+		}
+		dataStr := strings.Join(dataOpts, ",")
+		if err := syscall.Mount(mount.Source, destination, mount.Type, flags, dataStr); err != nil {
+			return fmt.Errorf("failed to mount %s at %s: %v", mount.Source, destination, err)
+		}
+	}
+	// if err := syscall.Mount("proc", "/var/lib/mrunc/images/ubuntu/proc", "proc", 0, ""); err != nil {
+	// 	return fmt.Errorf("failed to mount proc: %v", err)
+	// }
+
+	// syscall.Mount(
+	// 	"devpts",                  // source
+	// 	"/var/lib/mrunc/images/ubuntu/dev/pts",                // target
+	// 	"devpts",                  // filesystem type
+	// 	0, // flags
+	// 	"newinstance,ptmxmode=0666,mode=0620,gid=5", // data
+	// )
 
 	// Pivot root
 	if err := runtime.PivotRoot(root_fs, root_fs_putold); err != nil {
@@ -53,19 +108,6 @@ func childCommand(ctx *cli.Context) error {
 	// Cleanup old root
 	syscall.Unmount("/put_old", syscall.MNT_DETACH)
 	os.RemoveAll("/put_old")
-
-	// Mount proc
-	if err := syscall.Mount("proc", "proc", "proc", 0, ""); err != nil {
-		return fmt.Errorf("failed to mount proc: %v", err)
-	}
-
-	syscall.Mount(
-		"devpts",                  // source
-		"/dev/pts",                // target
-		"devpts",                  // filesystem type
-		syscall.MS_NOSUID|syscall.MS_NOEXEC, // flags
-		"newinstance,ptmxmode=0666,mode=0620,gid=5", // data
-	)
 
 
 	if !config.Process.Terminal {
