@@ -51,6 +51,29 @@
         "mode=0620",
         "gid=5"
       ]
+    },
+    {
+      "destination": "/sys",
+      "type": "sysfs",
+      "source": "sysfs",
+      "options": [
+        "nosuid",
+        "noexec",
+        "nodev",
+        "ro"
+      ]
+    },
+    {
+      "destination": "/sys/fs/cgroup",
+      "type": "cgroup2",
+      "source": "cgroup2",
+      "options": [
+        "nosuid",
+        "noexec",
+        "nodev",
+        "relatime",
+        "ro"
+      ]
     }
   ],
   "linux": {

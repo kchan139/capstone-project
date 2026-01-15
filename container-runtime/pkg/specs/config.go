@@ -5,6 +5,8 @@ type ContainerConfig struct {
 	Process     ProcessConfig `json:"process"`
 	Hostname    string        `json:"hostname,omitempty"`
 	ContainerId string        `json:"containerId,omitempty"`
+	CgroupPath string        `json:"cgroupPath,omitempty"`
+
 	Linux       LinuxConfig   `json:"linux"`
 	Mounts		[]MountConfig	  `json:"mounts"`
 }

@@ -8,7 +8,7 @@ import (
 
 func CreateNamespaces() *syscall.SysProcAttr {
 	return &syscall.SysProcAttr{
-		Cloneflags:   syscall.CLONE_NEWUTS | syscall.CLONE_NEWNS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNET,
+		Cloneflags:   syscall.CLONE_NEWUTS | syscall.CLONE_NEWNS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNET | syscall.CLONE_NEWIPC | syscall.CLONE_NEWCGROUP,
 		Unshareflags: syscall.CLONE_NEWNS,
 		// Setsid:       true,
 	}

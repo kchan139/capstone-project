@@ -39,16 +39,23 @@ func childCommand(ctx *cli.Context) error {
 		panic(fmt.Errorf("bind mount failed: %w", err))
 	}
 	// mount directories
-	fmt.Printf("DEBUG: Number of mounts: %d\n", len(config.Mounts))
-	for i,mount := range config.Mounts {
-		fmt.Printf("DEBUG: Mount %d: %+v\n", i, mount)
+	for _,mount := range config.Mounts {
 		destination := filepath.Join(root_fs, mount.Destination)
 		if err := os.MkdirAll(destination, 0755); err != nil {
 			return fmt.Errorf("failed to create mount point %s: %v", destination, err)
 		}
 		var flags uintptr = 0
 		var dataOpts []string
-
+		// handle slightly different for cgroup mounts
+		if mount.Type == "cgroup" || mount.Type == "cgroup2" {
+			if err := syscall.Mount(config.CgroupPath , root_fs + mount.Destination, "", syscall.MS_BIND | syscall.MS_REC,""); err != nil {
+				return fmt.Errorf("failed to mount %s at %s: %v", mount.Source, destination, err)
+			}
+			if err := syscall.Mount("", root_fs + mount.Destination, "", syscall.MS_REMOUNT | syscall.MS_RDONLY | syscall.MS_BIND, ""); err != nil {
+				return fmt.Errorf("failed to mount %s at %s: %v", mount.Source, destination, err)
+			}
+			continue
+		}
 		for _, opt := range mount.Options {
 			switch opt {
 			case "nosuid":
@@ -78,17 +85,7 @@ func childCommand(ctx *cli.Context) error {
 			return fmt.Errorf("failed to mount %s at %s: %v", mount.Source, destination, err)
 		}
 	}
-	// if err := syscall.Mount("proc", "/var/lib/mrunc/images/ubuntu/proc", "proc", 0, ""); err != nil {
-	// 	return fmt.Errorf("failed to mount proc: %v", err)
-	// }
 
-	// syscall.Mount(
-	// 	"devpts",                  // source
-	// 	"/var/lib/mrunc/images/ubuntu/dev/pts",                // target
-	// 	"devpts",                  // filesystem type
-	// 	0, // flags
-	// 	"newinstance,ptmxmode=0666,mode=0620,gid=5", // data
-	// )
 
 	// Pivot root
 	if err := runtime.PivotRoot(root_fs, root_fs_putold); err != nil {
