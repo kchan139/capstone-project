@@ -4,13 +4,33 @@ import (
 	"fmt"
 	"os"
 	"syscall"
+	mySpecs "mrunc/pkg/specs"
 )
 
-func CreateNamespaces() *syscall.SysProcAttr {
+func CreateNamespaces(config *mySpecs.ContainerConfig) *syscall.SysProcAttr {
+	var cloneFlags uintptr
+    var unshareFlags uintptr
+	for _, namespace := range config.Linux.Namespaces {
+		switch namespace.Type {
+			case "pid":
+				cloneFlags |= syscall.CLONE_NEWPID
+			case "network":
+				cloneFlags |= syscall.CLONE_NEWNET
+			case "ipc":
+				cloneFlags |= syscall.CLONE_NEWIPC
+			case "uts":
+				cloneFlags |= syscall.CLONE_NEWUTS
+			case "mount":
+				cloneFlags |= syscall.CLONE_NEWNS
+				unshareFlags |= syscall.CLONE_NEWNS
+			case "cgroup":
+				cloneFlags |= syscall.CLONE_NEWCGROUP
+			default:
+			}
+	}
 	return &syscall.SysProcAttr{
-		Cloneflags:   syscall.CLONE_NEWUTS | syscall.CLONE_NEWNS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNET | syscall.CLONE_NEWIPC | syscall.CLONE_NEWCGROUP,
-		Unshareflags: syscall.CLONE_NEWNS,
-		// Setsid:       true,
+		Cloneflags: cloneFlags,
+		Unshareflags: unshareFlags,
 	}
 }
 

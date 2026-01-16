@@ -92,6 +92,26 @@
         "limit": 100
       }
     },
+    "namespaces": [
+      {
+        "type": "pid"
+      },
+      {
+        "type": "network"
+      },
+      {
+        "type": "ipc"
+      },
+      {
+        "type": "uts"
+      },
+      {
+        "type": "mount"
+      },
+      {
+        "type": "cgroup"
+      }
+    ],
     "network": {
       "enableNetwork": true,
       "containerIP": "10.0.0.2/24",

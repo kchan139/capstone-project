@@ -41,9 +41,14 @@ type User struct {
 
 type LinuxConfig struct {
 	Resources *LinuxResources `json:"resources,omitempty"`
+	Namespaces []LinuxNamespace `json:"namespaces"`
 	Network   *LinuxNetwork   `json:"network,omitempty"`
 	SeccompConfig *SeccompConfig `json:"seccomp,omitempty"`
 
+}
+
+type LinuxNamespace struct {
+	Type string `json:"type"`
 }
 
 type SeccompConfig struct {

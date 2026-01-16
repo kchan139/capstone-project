@@ -79,7 +79,7 @@ func runCommand(ctx *cli.Context) error {
 	cmd.ExtraFiles = extra
 
 	cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3")
-	cmd.SysProcAttr = runtime.CreateNamespaces()
+	cmd.SysProcAttr = runtime.CreateNamespaces(config)
 
 
 	if err := cmd.Start(); err != nil {
