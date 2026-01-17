@@ -19,7 +19,7 @@ func TestCreateCgroup(t *testing.T) {
 
 	// This will likely fail in test environment without cgroup permissions
 	// but we're testing that it doesn't panic
-	err := CreateCgroup(config, pid)
+	_,err := CreateCgroup(config, pid)
 
 	// We expect this to fail in most test environments
 	// Just verify it returns an error gracefully rather than panicking
@@ -49,7 +49,7 @@ func TestCreateCgroupWithNilResources(t *testing.T) {
 	pid := os.Getpid()
 
 	// Should handle nil resources gracefully
-	err := CreateCgroup(config, pid)
+	_,err := CreateCgroup(config, pid)
 	if err == nil {
 		t.Log("CreateCgroup with nil resources succeeded")
 	} else {

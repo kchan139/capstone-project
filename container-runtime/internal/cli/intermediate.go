@@ -37,7 +37,7 @@ parent := os.NewFile(uintptr(3), "parent-sock")
 	// Kernel will skip stdio and anything already CLOEXEC.
 	_ = unix.CloseRange(3, ^uint(0), unix.CLOSE_RANGE_CLOEXEC)
 	cmd.ExtraFiles = []*os.File{passedSocket, fifo_fd}
-	cmd.SysProcAttr = runtime.CreateNamespaces()
+	cmd.SysProcAttr = runtime.CreateNamespaces(config)
 	if config.Process.Terminal {
 			fmt.Printf("Starting container in interactive mode\n")
 			cmd.Stdin = os.Stdin
