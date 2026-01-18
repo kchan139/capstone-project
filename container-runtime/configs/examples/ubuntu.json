@@ -4,7 +4,7 @@
     "readonly": false
   },
   "process": {
-    "args": ["/bin/bash"],
+    "args": ["sleep 300"],
     "env": [
     ],
     "cwd": "/",

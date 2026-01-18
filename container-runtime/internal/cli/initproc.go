@@ -106,51 +106,50 @@ func initprocCommand(ctx *cli.Context) error {
 	os.RemoveAll("/put_old")
 
 	// TODO: need to re-implement this, the master fd will be sent to a console socket
-	// if !config.Process.Terminal {
-	// 	fmt.Printf("Non-interactive mode: detaching from terminal\n")
-	// 	if _, err := syscall.Setsid(); err != nil && err != syscall.EPERM {
-	// 		fmt.Printf("Warning: setsid failed: %v\n", err)
-	// 	}
-	// } else {
-	// 	if _, err := unix.Setsid(); err != nil {
-	// 		return fmt.Errorf("setsid: %w", err)
-	// 	}
-	// 	fmt.Printf("DEBUG CHILD: Looking for console socket at FD 4\n")
-	// 	consoleSock := os.NewFile(uintptr(4), "console-socket")
-    //     if consoleSock == nil {
-    //         return fmt.Errorf("no console socket")
-    //     }
-    //     defer consoleSock.Close()
-	// 	fmt.Printf("DEBUG CHILD: Got console socket, fd=%d\n", consoleSock.Fd())
-	// 	// ======= create pty pair
-	// 	pty, closePty, err := runtime.SetupPty()
-    //     if err != nil {
-    //         return fmt.Errorf("setup pty: %w", err)
-    //     }
-    //     defer closePty()
-	// 	fmt.Printf("DEBUG CHILD: Created PTY, master fd=%d\n", pty.Master.Fd())
-    //     // ======= Send master FD back to parent via socket
-    //     rights := unix.UnixRights(int(pty.Master.Fd()))
-    //     dummy := []byte{0}
-    //     if err := unix.Sendmsg(int(consoleSock.Fd()), dummy, rights, nil, 0); err != nil {
-    //         return fmt.Errorf("sendmsg: %w", err)
-    //     }
-	// 	 fmt.Printf("DEBUG CHILD: Sent master FD successfully\n")
-    //     // Close master in child - parent owns it now
-    //     pty.Master.Close()
+	if !config.Process.Terminal {
+		fmt.Printf("Non-interactive mode: detaching from terminal\n")
+		if _, err := syscall.Setsid(); err != nil && err != syscall.EPERM {
+			fmt.Printf("Warning: setsid failed: %v\n", err)
+		}
+	} else {
+		if _, err := unix.Setsid(); err != nil {
+			return fmt.Errorf("setsid: %w", err)
+		}
+		consoleSock := os.NewFile(uintptr(5), "console-socket")
+        if consoleSock == nil {
+            return fmt.Errorf("no console socket")
+        }
+        defer consoleSock.Close()
+		fmt.Printf("DEBUG CHILD: Got console socket, fd=%d\n", consoleSock.Fd())
+		// ======= create pty pair
+		pty, closePty, err := runtime.SetupPty()
+        if err != nil {
+            return fmt.Errorf("setup pty: %w", err)
+        }
+        defer closePty()
+		fmt.Printf("DEBUG CHILD: Created PTY, master fd=%d\n", pty.Master.Fd())
+        // ======= Send master FD back to parent via socket
+        rights := unix.UnixRights(int(pty.Master.Fd()))
+        dummy := []byte{0}
+        if err := unix.Sendmsg(int(consoleSock.Fd()), dummy, rights, nil, 0); err != nil {
+            return fmt.Errorf("sendmsg: %w", err)
+        }
+		 fmt.Printf("DEBUG CHILD: Sent master FD successfully\n")
+        // Close master in child - parent owns it now
+        pty.Master.Close()
 
 
-	// 	// dup slave → 0,1,2
-	// 	for _, fd := range []int{0, 1, 2} {
-	// 		if err := unix.Dup2(int(pty.SlaveFile.Fd()), fd); err != nil {
-	// 			return fmt.Errorf("dup2 %d: %w", fd, err)
-	// 		}
-	// 	}
-	// 	// now fd 0 is the pty slave, make it controlling tty
-	// 	if err := unix.IoctlSetInt(0, unix.TIOCSCTTY, 0); err != nil {
-	// 		return fmt.Errorf("TIOCSCTTY: %w", err)
-	// 	}
-	// }
+		// dup slave → 0,1,2
+		for _, fd := range []int{0, 1, 2} {
+			if err := unix.Dup2(int(pty.SlaveFile.Fd()), fd); err != nil {
+				return fmt.Errorf("dup2 %d: %w", fd, err)
+			}
+		}
+		// now fd 0 is the pty slave, make it controlling tty
+		if err := unix.IoctlSetInt(0, unix.TIOCSCTTY, 0); err != nil {
+			return fmt.Errorf("TIOCSCTTY: %w", err)
+		}
+	}
 
 
 	// Setup network namespace
