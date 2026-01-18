@@ -2,26 +2,25 @@ package cli
 
 import (
 	"encoding/json"
-
 	"fmt"
 	"mrunc/internal/config"
 	"mrunc/internal/container"
-	"mrunc/internal/utils"
+	"mrunc/internal/runtime"
 	"os"
 	"os/exec"
+
 	"path/filepath"
-	"strconv"
 	"strings"
+	"time"
 
 	"github.com/urfave/cli/v2"
-	"golang.org/x/sys/unix"
 )
 
 func createCommand(ctx *cli.Context) error {
 	var configPath string
 
 	if ctx.NArg() < 2 {
-		// No config specified → use default path
+		// No container name and config specified → use default path
 		baseDir := os.Getenv("MRUNC_BASE")
 		if baseDir == "" {
 			baseDir = config.BaseImageDir
@@ -33,103 +32,119 @@ func createCommand(ctx *cli.Context) error {
 		configPath = ctx.Args().Get(1)
 	}
 	containerId := ctx.Args().Get(0)
+
 	config, err := container.LoadConfig(configPath)
+	if err != nil {
+		return err
+	}
 	config.ContainerId = containerId
+
+	childPipe, parentPipe, err := os.Pipe()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create pipe: %v", err)
 	}
-	// create 2 unix socket, one for intermediate and one for init process
-	parentSock, childSock, err := utils.SocketPair()
-	if err != nil {
-		return err
-	}
-	parentSock2, childSock2, err := utils.SocketPair()
-	if err != nil {
-		return err
-	}
-	fmt.Print("ignore")
-	fmt.Println(parentSock2)
-	defer parentSock.Close()
-	defer childSock.Close()
 
 	// create the exec.fifo files
 	fifo_fd, err := createExecFifo(config.ContainerId)
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command("/proc/self/exe", append([]string{"intermediate"}, os.Args[2:]...)...)
-	// Mark all fds >=3 as CLOEXEC in one go.
-	// Kernel will skip stdio and anything already CLOEXEC.
-	_ = unix.CloseRange(3, ^uint(0), unix.CLOSE_RANGE_CLOEXEC)
-	cmd.ExtraFiles = []*os.File{childSock, childSock2, fifo_fd}
 
-	if config.Process.Terminal {
-		fmt.Printf("Starting container in interactive mode\n")
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-	} else {
-		fmt.Printf("Starting container in non-interactive mode\n")
-		cmd.Stdin = nil
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-	}
+	cmd := exec.Command("/proc/self/exe", append([]string{"initproc"}, os.Args[2:]...)...)
+	cmd.ExtraFiles = []*os.File{childPipe,fifo_fd}
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
+	cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3")
+	cmd.SysProcAttr = runtime.CreateNamespaces(config)
 	if err := cmd.Start(); err != nil {
+		parentPipe.Close()
+		childPipe.Close()
 		return err
 	}
-	fifo_fd.Close()
-	childSock.Close()
-	childSock2.Close()
+	//----------------------------------------- setup cgroup
 
-	if err := json.NewEncoder(parentSock).Encode(config); err != nil {
-		return fmt.Errorf("send config: %w", err)
+	var cgroupPath string
+	if cgroupPath, err = runtime.CreateCgroup(config, cmd.Process.Pid); err != nil {
+		return fmt.Errorf("failed to create cgroup: %v", err)
 	}
-	// receive the PID of init process sent from intermediate process
-	buf := make([]byte, 32)
-	n, err := parentSock.Read(buf)
+	config.CgroupPath = cgroupPath
+	configData, err := json.Marshal(config)
 	if err != nil {
-		return fmt.Errorf("read pid: %w", err)
+		return err
 	}
 
-	InitPidStr := string(buf[:n])
-
-	pid, _ := strconv.Atoi(strings.TrimSpace(InitPidStr))
-	fmt.Println("Init PID from intermediate:", pid)
-
-	// send config to init proc
-	if err := json.NewEncoder(parentSock2).Encode(config); err != nil {
-		return fmt.Errorf("send config: %w", err)
+	_, err = parentPipe.Write(configData)
+	parentPipe.Close()
+	if err != nil {
+		return fmt.Errorf("failed to send config: %v", err)
 	}
 
+	childPipe.Close()
+
+	// Setup veth pair from parent side if network enabled
+	if config.Linux.Network != nil && config.Linux.Network.EnableNetwork {
+		// // Give child time to setup network namespace
+		// time.Sleep(500 * time.Millisecond)
+
+		// Wait for child to setup network namespace by polling for /proc/<pid>/ns/net
+		nsPath := fmt.Sprintf("/proc/%d/ns/net", cmd.Process.Pid)
+		const pollInterval = 50 * time.Millisecond
+		const pollTimeout = 2 * time.Second
+		var waited time.Duration
+		for {
+			if _, err := os.Stat(nsPath); err == nil {
+				break
+			}
+			if waited >= pollTimeout {
+				parentPipe.Close()
+				return fmt.Errorf("network namespace for child process (%d) did not appear within timeout", cmd.Process.Pid)
+			}
+			time.Sleep(pollInterval)
+			waited += pollInterval
+		}
+
+		netCfg := config.Linux.Network
+
+		// Extract IP without CIDR for firewall script
+		containerIP := strings.Split(netCfg.ContainerIP, "/")[0]
+
+		if err := runtime.SetupHostVethPair(
+			cmd.Process.Pid,
+			netCfg.VethHost,
+			netCfg.VethContainer,
+			netCfg.ContainerIP,
+			netCfg.GatewayCIDR,
+		); err != nil {
+			fmt.Printf("Warning: Failed to setup veth pair: %v\n", err)
+		} else {
+			// Apply firewall script if specified
+			if netCfg.FirewallScript != "" {
+				if err := runtime.ApplyFirewallScript(
+					netCfg.FirewallScript,
+					netCfg.VethHost,
+					containerIP,
+				); err != nil {
+					fmt.Printf("Warning: Firewall script failed: %v\n", err)
+					fmt.Printf("You can apply it manually later\n")
+				}
+			} else {
+				fmt.Printf("\n   No firewall script specified in config\n")
+				fmt.Printf("Network created but no NAT/forwarding rules applied\n")
+				fmt.Printf("Example script: configs/firewall-setup.sh\n\n")
+			}
+		}
+	}
 	if err := cmd.Wait(); err != nil {
-		fmt.Printf("PARENT: Intermediate exited with error: %v\n", err)
+		fmt.Printf("PARENT: Child exited with error: %v\n", err)
 	} else {
-		fmt.Println("PARENT: Intermediate completed successfully")
+		fmt.Println("PARENT: Child completed successfully")
+	}
+	// Cleanup veth on exit
+	if config.Linux.Network != nil && config.Linux.Network.EnableNetwork {
+		runtime.CleanupVeth(config.Linux.Network.VethHost)
 	}
 
 	return nil
-}
-
-func createExecFifo(containerId string) (*os.File, error) {
-	dirPath := "/run/mrunc/" + containerId
-	fifoPath := dirPath + "/exec.fifo"
-
-	// Step 1: ensure directory exists
-	if err := os.MkdirAll(dirPath, 0755); err != nil {
-		return nil, err
-	}
-
-	// Step 2: create FIFO
-	if err := unix.Mkfifo(fifoPath, 0666); err != nil && !os.IsExist(err) {
-		return nil, err
-	}
-
-	// Step 3: open it (both ends, so it doesn't block yet)
-	fifoFile, err := os.OpenFile(fifoPath, os.O_RDWR, os.ModeNamedPipe)
-	if err != nil {
-		return nil, err
-	}
-
-	return fifoFile, nil
 }

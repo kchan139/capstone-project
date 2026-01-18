@@ -1,14 +1,10 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"mrunc/internal/runtime"
 	"mrunc/internal/utils"
-	"mrunc/pkg/specs"
 	"os"
-	"strconv"
 	"syscall"
 	"strings"
 	"path/filepath"
@@ -17,7 +13,7 @@ import (
 )
 
 func childCommand(ctx *cli.Context) error {
-	config, err := receiveConfigFromPipe()
+	config, err := utils.ReceiveConfigFromPipe()
 	if err != nil {
 		return fmt.Errorf("child: failed to receive config: %v", err)
 	}
@@ -214,36 +210,4 @@ func childCommand(ctx *cli.Context) error {
 	}
 
 	return  runtime.ExecuteCommand(execPath, execArgs, env)
-}
-
-// receiveConfigFromPipe reads configuration from pipe passed by parent
-func receiveConfigFromPipe() (*specs.ContainerConfig, error) {
-	// Get pipe FD from environment variable
-	pipeFdStr := os.Getenv("_MRUNC_PIPE_FD")
-	if pipeFdStr == "" {
-		return nil, fmt.Errorf("_MRUNC_PIPE_FD environment variable not set")
-	}
-
-	pipeFd, err := strconv.Atoi(pipeFdStr)
-	if err != nil {
-		return nil, fmt.Errorf("invalid pipe FD: %v", err)
-	}
-
-	// Create file from FD
-	pipe := os.NewFile(uintptr(pipeFd), "config-pipe")
-	defer pipe.Close()
-
-	// Read all data from pipe
-	configData, err := io.ReadAll(pipe)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config data: %v", err)
-	}
-
-	// Deserialize config
-	var config specs.ContainerConfig
-	if err := json.Unmarshal(configData, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config JSON: %v", err)
-	}
-
-	return &config, nil
 }
