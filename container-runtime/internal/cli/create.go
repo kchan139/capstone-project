@@ -20,6 +20,10 @@ import (
 )
 
 func createCommand(ctx *cli.Context) error {
+	var consoleSockPath string
+	consoleSockPath = ctx.String("console-socket")
+	fmt.Printf("-----------console: %v\n", consoleSockPath)
+
 	var configPath string
 
 	if ctx.NArg() < 2 {
@@ -66,12 +70,15 @@ func createCommand(ctx *cli.Context) error {
 
 
 
-	cmd := exec.Command("/proc/self/exe", append([]string{"initproc"}, os.Args[2:]...)...)
+	cmd := exec.Command("/proc/self/exe", "initproc")
 	cmd.ExtraFiles = extra
 
 
 	cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3")
 	cmd.SysProcAttr = runtime.CreateNamespaces(config)
+
+
+
 	if err := cmd.Start(); err != nil {
 		parentPipe.Close()
 		childPipe.Close()
@@ -214,4 +221,27 @@ func createCommand(ctx *cli.Context) error {
 	}
 
 	return nil
+}
+
+func createExecFifo(containerId string) (*os.File, error) {
+	dirPath := "/run/mrunc/" + containerId
+	fifoPath := dirPath + "/exec.fifo"
+
+	// Step 1: ensure directory exists
+	if err := os.MkdirAll(dirPath, 0755); err != nil {
+		return nil, err
+	}
+
+	// Step 2: create FIFO
+	if err := unix.Mkfifo(fifoPath, 0666); err != nil && !os.IsExist(err) {
+		return nil, err
+	}
+
+	// Step 3: open it (both ends, so it doesn't block yet)
+	fifoFile, err := os.OpenFile(fifoPath, os.O_RDWR, os.ModeNamedPipe)
+	if err != nil {
+		return nil, err
+	}
+
+	return fifoFile, nil
 }

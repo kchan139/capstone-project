@@ -29,7 +29,7 @@
             "CAP_AUDIT_WRITE"
         ]
     },
-    "terminal": false,
+    "terminal": true,
     "user": {"uid":0, "gid":0}
   },
   "hostname":"mrunc",
