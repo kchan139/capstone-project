@@ -81,6 +81,7 @@ func runCommand(ctx *cli.Context) error {
 	cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3")
 	cmd.SysProcAttr = runtime.CreateNamespaces(config)
 
+	// erase when finish debug
 
 	if err := cmd.Start(); err != nil {
 		parentPipe.Close()

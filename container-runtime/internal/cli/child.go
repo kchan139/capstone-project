@@ -80,6 +80,14 @@ func childCommand(ctx *cli.Context) error {
 		if err := syscall.Mount(mount.Source, destination, mount.Type, flags, dataStr); err != nil {
 			return fmt.Errorf("failed to mount %s at %s: %v", mount.Source, destination, err)
 		}
+		// properly setup /dev
+		if mount.Destination == "/dev" {
+			runtime.SetupDev(config)
+		}
+		if mount.Destination == "/dev/pts" {
+			fmt.Println("jump to dev pts")
+			runtime.LinkPts(config)
+		}
 	}
 
 
@@ -147,6 +155,10 @@ func childCommand(ctx *cli.Context) error {
 		if err := unix.IoctlSetInt(0, unix.TIOCSCTTY, 0); err != nil {
 			return fmt.Errorf("TIOCSCTTY: %w", err)
 		}
+		if err:=runtime.BindConsole(int(pty.SlaveFile.Fd())); err != nil {
+			return fmt.Errorf("error binding /dev/console: %w", err)
+		}
+
 	}
 
 

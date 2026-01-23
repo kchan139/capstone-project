@@ -21,10 +21,7 @@ func PrepareExec(command string, args []string, env []string) (string, []string,
 		args[0] = resolvedPath
 		return resolvedPath, args, nil
 	}
-
-	// Fall back to shell
-	shellCmd := strings.Join(args, " ")
-	return "/bin/sh", []string{"/bin/sh", "-c", shellCmd}, nil
+	return "", []string{""}, nil
 }
 
 // ExecuteCommand performs the actual exec - call AFTER seccomp is applied
