@@ -5,6 +5,8 @@ type ContainerConfig struct {
 	Process     ProcessConfig `json:"process"`
 	Hostname    string        `json:"hostname,omitempty"`
 	ContainerId string        `json:"containerId,omitempty"`
+	CgroupPath string        `json:"cgroupPath,omitempty"`
+
 	Linux       LinuxConfig   `json:"linux"`
 	Mounts		[]MountConfig	  `json:"mounts"`
 }
@@ -39,9 +41,14 @@ type User struct {
 
 type LinuxConfig struct {
 	Resources *LinuxResources `json:"resources,omitempty"`
+	Namespaces []LinuxNamespace `json:"namespaces"`
 	Network   *LinuxNetwork   `json:"network,omitempty"`
 	SeccompConfig *SeccompConfig `json:"seccomp,omitempty"`
 
+}
+
+type LinuxNamespace struct {
+	Type string `json:"type"`
 }
 
 type SeccompConfig struct {

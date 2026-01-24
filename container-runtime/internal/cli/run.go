@@ -50,11 +50,6 @@ func runCommand(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create pipe: %v", err)
 	}
 
-	configData, err := json.Marshal(config)
-	if err != nil {
-		return err
-	}
-
 	var extra []*os.File
 	var host *runtime.HostConsole
 	var parentSock, childSock *os.File
@@ -84,12 +79,9 @@ func runCommand(ctx *cli.Context) error {
 	cmd.ExtraFiles = extra
 
 	cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3")
-	cmd.SysProcAttr = runtime.CreateNamespaces()
+	cmd.SysProcAttr = runtime.CreateNamespaces(config)
 
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
+	// erase when finish debug
 
 	if err := cmd.Start(); err != nil {
 		parentPipe.Close()
@@ -98,8 +90,14 @@ func runCommand(ctx *cli.Context) error {
 	}
 	// setup cgroup
 
-	if err := runtime.CreateCgroup(config, cmd.Process.Pid); err != nil {
+	var cgroupPath string
+	if cgroupPath, err = runtime.CreateCgroup(config, cmd.Process.Pid); err != nil {
 		return fmt.Errorf("failed to create cgroup: %v", err)
+	}
+	config.CgroupPath = cgroupPath
+	configData, err := json.Marshal(config)
+	if err != nil {
+		return err
 	}
 
 	_, err = parentPipe.Write(configData)

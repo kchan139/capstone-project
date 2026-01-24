@@ -38,6 +38,13 @@ func NewApp() *cli.App {
 			{
 				Name:   "create",
 				Usage:  "Create the container but not run it",
+				Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:  "console-socket",
+							Usage: "path to unix socket for sending console fd",
+							Value: "",
+						},
+					},
 				Action: createCommand,
 			},
 			{

@@ -40,6 +40,17 @@
       "source": "proc"
     },
     {
+      "destination": "/dev",
+      "type": "tmpfs",
+      "source": "tmpfs",
+      "options": [
+        "nosuid",
+        "strictatime",
+        "mode=755",
+        "size=65536k"
+      ]
+    },
+    {
       "destination": "/dev/pts",
       "type": "devpts",
       "source": "devpts",
@@ -50,6 +61,51 @@
         "ptmxmode=0666",
         "mode=0620",
         "gid=5"
+      ]
+    },
+    {
+      "destination": "/dev/shm",
+      "type": "tmpfs",
+      "source": "shm",
+      "options": [
+        "nosuid",
+        "noexec",
+        "nodev",
+        "mode=1777",
+        "size=65536k"
+      ]
+    },
+    {
+    "destination": "/dev/mqueue",
+    "type": "mqueue",
+    "source": "mqueue",
+    "options": [
+      "nosuid",
+      "noexec",
+      "nodev"
+    ]
+    },
+    {
+      "destination": "/sys",
+      "type": "sysfs",
+      "source": "sysfs",
+      "options": [
+        "nosuid",
+        "noexec",
+        "nodev",
+        "ro"
+      ]
+    },
+    {
+      "destination": "/sys/fs/cgroup",
+      "type": "cgroup2",
+      "source": "cgroup2",
+      "options": [
+        "nosuid",
+        "noexec",
+        "nodev",
+        "relatime",
+        "ro"
       ]
     }
   ],
@@ -69,6 +125,26 @@
         "limit": 100
       }
     },
+    "namespaces": [
+      {
+        "type": "pid"
+      },
+      {
+        "type": "network"
+      },
+      {
+        "type": "ipc"
+      },
+      {
+        "type": "uts"
+      },
+      {
+        "type": "mount"
+      },
+      {
+        "type": "cgroup"
+      }
+    ],
     "network": {
       "enableNetwork": true,
       "containerIP": "10.0.0.2/24",

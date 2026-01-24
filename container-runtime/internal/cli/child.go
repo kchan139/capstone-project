@@ -1,14 +1,10 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"mrunc/internal/runtime"
 	"mrunc/internal/utils"
-	"mrunc/pkg/specs"
 	"os"
-	"strconv"
 	"syscall"
 	"strings"
 	"path/filepath"
@@ -17,7 +13,7 @@ import (
 )
 
 func childCommand(ctx *cli.Context) error {
-	config, err := receiveConfigFromPipe()
+	config, err := utils.ReceiveConfigFromPipe()
 	if err != nil {
 		return fmt.Errorf("child: failed to receive config: %v", err)
 	}
@@ -39,16 +35,23 @@ func childCommand(ctx *cli.Context) error {
 		panic(fmt.Errorf("bind mount failed: %w", err))
 	}
 	// mount directories
-	fmt.Printf("DEBUG: Number of mounts: %d\n", len(config.Mounts))
-	for i,mount := range config.Mounts {
-		fmt.Printf("DEBUG: Mount %d: %+v\n", i, mount)
+	for _,mount := range config.Mounts {
 		destination := filepath.Join(root_fs, mount.Destination)
 		if err := os.MkdirAll(destination, 0755); err != nil {
 			return fmt.Errorf("failed to create mount point %s: %v", destination, err)
 		}
 		var flags uintptr = 0
 		var dataOpts []string
-
+		// handle slightly different for cgroup mounts
+		if mount.Type == "cgroup" || mount.Type == "cgroup2" {
+			if err := syscall.Mount(config.CgroupPath , root_fs + mount.Destination, "", syscall.MS_BIND | syscall.MS_REC,""); err != nil {
+				return fmt.Errorf("failed to mount %s at %s: %v", mount.Source, destination, err)
+			}
+			if err := syscall.Mount("", root_fs + mount.Destination, "", syscall.MS_REMOUNT | syscall.MS_RDONLY | syscall.MS_BIND, ""); err != nil {
+				return fmt.Errorf("failed to mount %s at %s: %v", mount.Source, destination, err)
+			}
+			continue
+		}
 		for _, opt := range mount.Options {
 			switch opt {
 			case "nosuid":
@@ -77,18 +80,16 @@ func childCommand(ctx *cli.Context) error {
 		if err := syscall.Mount(mount.Source, destination, mount.Type, flags, dataStr); err != nil {
 			return fmt.Errorf("failed to mount %s at %s: %v", mount.Source, destination, err)
 		}
+		// properly setup /dev
+		if mount.Destination == "/dev" {
+			runtime.SetupDev(config)
+		}
+		if mount.Destination == "/dev/pts" {
+			fmt.Println("jump to dev pts")
+			runtime.LinkPts(config)
+		}
 	}
-	// if err := syscall.Mount("proc", "/var/lib/mrunc/images/ubuntu/proc", "proc", 0, ""); err != nil {
-	// 	return fmt.Errorf("failed to mount proc: %v", err)
-	// }
 
-	// syscall.Mount(
-	// 	"devpts",                  // source
-	// 	"/var/lib/mrunc/images/ubuntu/dev/pts",                // target
-	// 	"devpts",                  // filesystem type
-	// 	0, // flags
-	// 	"newinstance,ptmxmode=0666,mode=0620,gid=5", // data
-	// )
 
 	// Pivot root
 	if err := runtime.PivotRoot(root_fs, root_fs_putold); err != nil {
@@ -154,6 +155,10 @@ func childCommand(ctx *cli.Context) error {
 		if err := unix.IoctlSetInt(0, unix.TIOCSCTTY, 0); err != nil {
 			return fmt.Errorf("TIOCSCTTY: %w", err)
 		}
+		if err:=runtime.BindConsole(int(pty.SlaveFile.Fd())); err != nil {
+			return fmt.Errorf("error binding /dev/console: %w", err)
+		}
+
 	}
 
 
@@ -217,36 +222,4 @@ func childCommand(ctx *cli.Context) error {
 	}
 
 	return  runtime.ExecuteCommand(execPath, execArgs, env)
-}
-
-// receiveConfigFromPipe reads configuration from pipe passed by parent
-func receiveConfigFromPipe() (*specs.ContainerConfig, error) {
-	// Get pipe FD from environment variable
-	pipeFdStr := os.Getenv("_MRUNC_PIPE_FD")
-	if pipeFdStr == "" {
-		return nil, fmt.Errorf("_MRUNC_PIPE_FD environment variable not set")
-	}
-
-	pipeFd, err := strconv.Atoi(pipeFdStr)
-	if err != nil {
-		return nil, fmt.Errorf("invalid pipe FD: %v", err)
-	}
-
-	// Create file from FD
-	pipe := os.NewFile(uintptr(pipeFd), "config-pipe")
-	defer pipe.Close()
-
-	// Read all data from pipe
-	configData, err := io.ReadAll(pipe)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config data: %v", err)
-	}
-
-	// Deserialize config
-	var config specs.ContainerConfig
-	if err := json.Unmarshal(configData, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config JSON: %v", err)
-	}
-
-	return &config, nil
 }
