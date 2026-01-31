@@ -64,6 +64,12 @@ func NewApp() *cli.App {
 				Usage:  "Signal the created container to start",
 				Action: startCommand,
 			},
+			{
+				Name:   "monitor",
+				Usage:  "Signal the created container to start",
+				Hidden: true,
+				Action: monitorCommand,
+			},
 		},
 	}
 }
