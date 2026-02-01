@@ -210,6 +210,14 @@ func runCommand(ctx *cli.Context) error {
 			}
 		}
 	}
+
+
+	//0. create /run/mrunc/<container-id> to store state.json, and audit.json
+	infoContainerDir := filepath.Join("/run/mrunc", containerId)
+	err = os.MkdirAll(infoContainerDir, 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create directory: %v", err)
+	}
 	// ///////// MONITOR PHASE ///////////
 	// 1. WAIT FOR CHILD TO FINISH SETTING UP
 	buf := make([]byte, 64)
@@ -223,6 +231,7 @@ func runCommand(ctx *cli.Context) error {
 	monitorCmd := exec.Command("/proc/self/exe", "monitor")
 	monitorCmd.Env = append(os.Environ(),
 		"CONTAINER_PID=" + strconv.Itoa(cmd.Process.Pid),
+		"CONTAINER_ID=" + containerId,
 	)
 	monitorCmd.Stdin = os.Stdin
 	monitorCmd.Stdout = os.Stdout
@@ -244,6 +253,11 @@ func runCommand(ctx *cli.Context) error {
 	fmt.Printf("After monitor ready: %v\n",signal)
 	// 4. monitor is ready, send signal to child so child can continue
 	SyncParentSock.Write([]byte("OK"))
+
+	// wait for monitor to exit (MAY DELETE)
+	if err := monitorCmd.Wait(); err != nil {
+		fmt.Printf("Monitor exited with error: %v\n", err)
+	}
 
 	if err := cmd.Wait(); err != nil {
 		fmt.Printf("PARENT: Child exited with error: %v\n", err)

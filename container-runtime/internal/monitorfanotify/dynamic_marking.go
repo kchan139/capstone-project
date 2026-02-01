@@ -40,7 +40,7 @@ func eventToFlag(event string, isBlock bool) (uint64, error) {
 }
 
 // buildEventMask creates the combined event mask from watch rule
-func buildEventMask(rule specs.WatchRule) (uint64, error) {
+func BuildEventMask(rule specs.WatchRule) (uint64, error) {
 	isBlock := rule.Action == "block"
 	var mask uint64
 
@@ -86,7 +86,7 @@ func buildEventMask(rule specs.WatchRule) (uint64, error) {
 // }
 
 // eventMaskToString converts event mask to readable string
-func eventMaskToString(mask uint64) string {
+func EventMaskToString(mask uint64) string {
 	var events []string
 
 	// Check notification flags
