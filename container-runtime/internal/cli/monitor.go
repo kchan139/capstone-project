@@ -40,7 +40,7 @@ func monitorCommand(ctx *cli.Context) error {
 	//////////// paste monitor code here
 	watchPID := containerPid
 
-	conf, err := specs.LoadConfigFanotify("configs/examples/monitor_config.json")
+	conf, err := specs.LoadConfigFanotify(os.Getenv("FANOTIFY_FILEPATH"))
 	if err != nil {
 		log.Printf("Failed to load config: %v", err)
 	}
