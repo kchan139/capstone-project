@@ -235,6 +235,7 @@ func runCommand(ctx *cli.Context) error {
 			"CONTAINER_PID=" + strconv.Itoa(cmd.Process.Pid),
 			"CONTAINER_ID=" + containerId,
 			"FANOTIFY_FILEPATH=" + fanotifyMonitorFilePath,
+			"ROOT_FS="+config.RootFS.Path,
 		)
 		monitorCmd.Stdin = os.Stdin
 		monitorCmd.Stdout = os.Stdout

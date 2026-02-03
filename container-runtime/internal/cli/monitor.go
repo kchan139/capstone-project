@@ -11,6 +11,8 @@ import (
 	"golang.org/x/sys/unix"
 	"os"
 	"time"
+	"bufio"
+	"strings"
 	"unsafe"
 	"syscall"
 	"path/filepath"
@@ -271,7 +273,7 @@ func monitorCommand(ctx *cli.Context) error {
 		var offset int
 		for offset < n {
 			event := (*unix.FanotifyEventMetadata)(unsafe.Pointer(&buf[offset]))
-
+			monitorAction := "audit"
 			if event.Fd >= 0 {
 				// Check if this is a permission event that needs response
 				if event.Mask&(unix.FAN_ALL_PERM_EVENTS|unix.FAN_OPEN_EXEC_PERM) != 0 {
@@ -280,6 +282,7 @@ func monitorCommand(ctx *cli.Context) error {
 					}
 					//  permissive event => block
 					response.Response = unix.FAN_DENY
+					monitorAction = "block"
 					// Send response
 					written, err := unix.Write(fd, (*[unsafe.Sizeof(response)]byte)(unsafe.Pointer(&response))[:])
 					if err != nil {
@@ -295,7 +298,7 @@ func monitorCommand(ctx *cli.Context) error {
 				// Get the file path
 				procPath := fmt.Sprintf("/proc/self/fd/%d", event.Fd)
 				path, _ := os.Readlink(procPath)
-
+				fileUid, fileGid, filePerms, _ := getFileInfo(os.Getenv("ROOT_FS")+path)
 				// Log the event
 				eventType := monitorfanotify.EventMaskToString(uint64(event.Mask))
 				timestamp := time.Now().Format("15:04:05.000")
@@ -304,8 +307,19 @@ func monitorCommand(ctx *cli.Context) error {
 				if err != nil {
 					return fmt.Errorf("failed to open log file: %v", err)
 				}
-				logEntry := fmt.Sprintf("[%s] [%s] %s (PID: %d)\n", timestamp, eventType, path, event.Pid)
-				fmt.Printf("[%s] [%s] %s (PID: %d)\n", timestamp, eventType, path, event.Pid)
+				eventUid, eventGid, err := getProcessCredentials(int(event.Pid))
+				logEntry := fmt.Sprintf(
+					"[%s] [%s] %s (PID: %d, ProcUID: %d, ProcGID: %d, FileUID: %d, FileGID: %d, Perms: %04o)\nAction: %v",
+					timestamp, eventType, path,
+					event.Pid, eventUid, eventGid,
+					fileUid, fileGid, filePerms,monitorAction,
+				)
+				fmt.Printf(
+					"[%s] [%s] %s (PID: %d, ProcUID: %d, ProcGID: %d, FileUID: %d, FileGID: %d, Perms: %04o)\nAction: %v",
+					timestamp, eventType, path,
+					event.Pid, eventUid, eventGid,
+					fileUid, fileGid, filePerms,monitorAction,
+				)
 				eventLog.WriteString(logEntry)
 				eventLog.Close()
 				// Close the file descriptor
@@ -350,4 +364,58 @@ func watchProcess(pid int, cleanup func()) {
 	fmt.Printf("\nProcess %d has exited, triggering cleanup...\n", pid)
 	cleanup()
 	os.Exit(0)
+}
+
+
+
+
+func getProcessCredentials(pid int) (uid, gid int, err error) {
+    statusPath := fmt.Sprintf("/proc/%d/status", pid)
+    file, err := os.Open(statusPath)
+    if err != nil {
+        return 0, 0, fmt.Errorf("failed to open %s: %v", statusPath, err)
+    }
+    defer file.Close()
+
+    scanner := bufio.NewScanner(file)
+
+    for scanner.Scan() {
+        line := scanner.Text()
+
+        if strings.HasPrefix(line, "Uid:") {
+            fields := strings.Fields(line)
+            if len(fields) >= 2 {
+                uid, _ = strconv.Atoi(fields[1])
+            }
+        }
+
+        if strings.HasPrefix(line, "Gid:") {
+            fields := strings.Fields(line)
+            if len(fields) >= 2 {
+                gid, _ = strconv.Atoi(fields[1])
+            }
+        }
+    }
+
+    return uid, gid, scanner.Err()
+}
+
+
+
+func getFileInfo(path string) (uid, gid int, perms os.FileMode, err error) {
+    fileInfo, err := os.Stat(path)
+    if err != nil {
+        return 0, 0, 0, fmt.Errorf("failed to stat file: %v", err)
+    }
+
+    stat, ok := fileInfo.Sys().(*syscall.Stat_t)
+    if !ok {
+        return 0, 0, 0, fmt.Errorf("failed to get syscall.Stat_t")
+    }
+
+    uid = int(stat.Uid)
+    gid = int(stat.Gid)
+    perms = fileInfo.Mode().Perm()
+
+    return uid, gid, perms, nil
 }

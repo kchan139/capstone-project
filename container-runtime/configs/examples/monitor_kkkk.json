@@ -9,6 +9,11 @@
             "path" : "/home/khoatran/dir2",
             "events" : ["open"],
             "action" : "block"
+        },
+        {
+            "path" : "/home/khoatran/dir3",
+            "events" : ["open"],
+            "action" : "audit"
         }
     ]
 }
