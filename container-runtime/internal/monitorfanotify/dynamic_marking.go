@@ -55,36 +55,6 @@ func BuildEventMask(rule specs.WatchRule) (uint64, error) {
 	return mask, nil
 }
 
-// applyWatchRules applies fanotify marks based on watch rules
-// func applyWatchRules(fd int, rules []WatchRule) error {
-// 	for i, rule := range rules {
-// 		log.Printf("Applying rule %d: path=%s, events=%v, action=%s",
-// 			i+1, rule.Path, rule.Events, rule.Action)
-
-// 		// Build event mask based on events and action
-// 		eventMask, err := buildEventMask(rule)
-// 		if err != nil {
-// 			return fmt.Errorf("failed to build event mask for rule %d: %w", i+1, err)
-// 		}
-
-// 		// Apply fanotify mark
-// 		err = unix.FanotifyMark(
-// 			fd,
-// 			unix.FAN_MARK_ADD|unix.FAN_MARK_MOUNT,
-// 			eventMask,
-// 			unix.AT_FDCWD,
-// 			rule.Path,
-// 		)
-// 		if err != nil {
-// 			return fmt.Errorf("FanotifyMark failed for %s: %w", rule.Path, err)
-// 		}
-
-// 		log.Printf("  ✓ Marked %s (events: 0x%x, action: %s)", rule.Path, eventMask, rule.Action)
-// 	}
-
-// 	return nil
-// }
-
 // eventMaskToString converts event mask to readable string
 func EventMaskToString(mask uint64) string {
 	var events []string

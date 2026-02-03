@@ -195,25 +195,27 @@ func monitorCommand(ctx *cli.Context) error {
 	for _, rule := range validRules {
 		fmt.Printf("Setting up monitoring for: %s\n", rule.Path)
 
-		// Create bind mount
-		err = unix.Mount(rule.Path, rule.Path, "", unix.MS_BIND, "")
-		if err != nil {
-			log.Printf("  ✗ Bind mount failed for %s: %v (skipping)", rule.Path, err)
-			continue
-		}
-		fmt.Printf("  ✓ Bind mount created\n")
+		// Create bind mount if not mounted
+		if (!isMounted(mounts, rule.Path)) {
+			err = unix.Mount(rule.Path, rule.Path, "", unix.MS_BIND, "")
+			if err != nil {
+				log.Printf("  ✗ Bind mount failed for %s: %v (skipping)", rule.Path, err)
+				continue
+			}
+			fmt.Printf("  ✓ Bind mount created\n")
 
-		// Make it private (recommended for isolation)
-		err = unix.Mount("", rule.Path, "", unix.MS_PRIVATE, "")
-		if err != nil {
-			log.Printf("  Warning: Failed to make mount private: %v", err)
-		}
+			// Make it private (recommended for isolation)
+			err = unix.Mount("", rule.Path, "", unix.MS_PRIVATE, "")
+			if err != nil {
+				log.Printf("  Warning: Failed to make mount private: %v", err)
+			}
 
-		// Track this mount
-		mounts = append(mounts, &mountInfo{
-			path:    rule.Path,
-			mounted: true,
-		})
+			// Track this mount
+			mounts = append(mounts, &mountInfo{
+				path:    rule.Path,
+				mounted: true,
+			})
+		}
 
 		// Build event mask based on events and action
 		eventMask, err := monitorfanotify.BuildEventMask(rule)
@@ -418,4 +420,14 @@ func getFileInfo(path string) (uid, gid int, perms os.FileMode, err error) {
     perms = fileInfo.Mode().Perm()
 
     return uid, gid, perms, nil
+}
+
+
+func isMounted(mounts []*mountInfo, path string) bool {
+	for _, m := range mounts {
+		if m.path == path && m.mounted {
+			return true
+		}
+	}
+	return false
 }
