@@ -228,6 +228,10 @@ func runCommand(ctx *cli.Context) error {
 	signal := string(buf[:n])
 	fmt.Printf("After child ready: %v\n",signal)
 
+
+	// ////// TODO: Write data to state.json (container pid, other data)
+	runtime.UpdateStateFile(config, cmd.Process.Pid, "running")
+	///////
 	if fanotifyMonitorFilePath != "" {
 		// 2. child is ready, fork and run the monitor process
 		monitorCmd := exec.Command("/proc/self/exe", "monitor")
