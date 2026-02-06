@@ -221,5 +221,17 @@ func childCommand(ctx *cli.Context) error {
 		return fmt.Errorf("failed to set the seccomp : %v", err)
 	}
 
+	//1. child process ready, signal the parent
+	// so that the parent could create the monitor process
+	syncSock := os.NewFile(5, "sync-child-sock")
+	syncSock.Write([]byte("OK"))
+	//2. child then stop, waiting for the parent to signal that the monitor is ready
+	buf := make([]byte, 64)
+	n, err := syncSock.Read(buf)
+	if err != nil {
+		fmt.Printf("failed to read from sync socket: %v", err)
+	}
+	_ = string(buf[:n])
+
 	return  runtime.ExecuteCommand(execPath, execArgs, env)
 }

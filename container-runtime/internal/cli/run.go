@@ -12,7 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"mrunc/internal/utils"
-
+	"strconv"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -24,7 +24,7 @@ import (
 
 func runCommand(ctx *cli.Context) error {
 	var configPath string
-
+	var fanotifyMonitorFilePath = ctx.String("fanotify-monitor")
 	if ctx.NArg() < 2 {
 		// No container name and config specified → use default path
 		baseDir := os.Getenv("MRUNC_BASE")
@@ -53,6 +53,9 @@ func runCommand(ctx *cli.Context) error {
 	var extra []*os.File
 	var host *runtime.HostConsole
 	var parentSock, childSock *os.File
+	var SyncParentSock, SyncChildSock *os.File
+	SyncParentSock, SyncChildSock, _ = utils.SocketPair()
+
 	var restoreConsole func()
 	if config.Process.Terminal {
 		fmt.Printf("Starting container in interactive mode\n")
@@ -68,13 +71,13 @@ func runCommand(ctx *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		extra = []*os.File{childPipe, childSock}
+		extra = []*os.File{childPipe, childSock, SyncChildSock}
 	} else {
 		fmt.Printf("Starting container in non-interactive mode\n")
-		extra = []*os.File{childPipe}
+		extra = []*os.File{childPipe,nil, SyncChildSock}
 
 	}
-	cmd := exec.Command("/proc/self/exe", append([]string{"child"}, os.Args[2:]...)...)
+	cmd := exec.Command("/proc/self/exe", "child")
 
 	cmd.ExtraFiles = extra
 
@@ -206,6 +209,68 @@ func runCommand(ctx *cli.Context) error {
 				fmt.Printf("Example script: configs/firewall-setup.sh\n\n")
 			}
 		}
+	}
+
+
+	//0. create /run/mrunc/<container-id> to store state.json, and audit.json
+	infoContainerDir := filepath.Join("/run/mrunc", containerId)
+	err = os.MkdirAll(infoContainerDir, 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create directory: %v", err)
+	}
+	// ///////// MONITOR PHASE ///////////
+	// 1. WAIT FOR CHILD TO FINISH SETTING UP
+	buf := make([]byte, 64)
+	n, err := SyncParentSock.Read(buf)
+	if err != nil {
+		fmt.Printf("failed to read from sync socket: %v", err)
+	}
+	signal := string(buf[:n])
+	fmt.Printf("After child ready: %v\n",signal)
+
+
+	// ////// TODO: Write data to state.json (container pid, other data)
+	runtime.UpdateStateFile(config, cmd.Process.Pid, "running")
+	///////
+	if fanotifyMonitorFilePath != "" {
+		// 2. child is ready, fork and run the monitor process
+		monitorCmd := exec.Command("/proc/self/exe", "monitor")
+		monitorCmd.Env = append(os.Environ(),
+			"CONTAINER_PID=" + strconv.Itoa(cmd.Process.Pid),
+			"CONTAINER_ID=" + containerId,
+			"FANOTIFY_FILEPATH=" + fanotifyMonitorFilePath,
+			"ROOT_FS="+config.RootFS.Path,
+		)
+		monitorCmd.Stdin = os.Stdin
+		monitorCmd.Stdout = os.Stdout
+		monitorCmd.Stderr = os.Stderr
+		monitorParentSock, monitorChildSock, _ := utils.SocketPair()
+		monitorCmd.ExtraFiles = []*os.File{monitorChildSock}
+
+		err = monitorCmd.Start()
+		if err != nil {
+			fmt.Printf("failed to start monitor process: %v", err)
+		}
+
+		// 3. wait for the monitor to ready
+		monitorBuf := make([]byte, 64)
+		n, err = monitorParentSock.Read(monitorBuf)
+		if err != nil {
+			fmt.Printf("failed to read from monitor parent socket: %v", err)
+		}
+		signal = string(buf[:n])
+		fmt.Printf("After monitor ready: %v\n",signal)
+		// 4. monitor is ready, send signal to child so child can continue
+		SyncParentSock.Write([]byte("OK"))
+
+		// wait for monitor to exit (MAY DELETE)
+		if err := monitorCmd.Wait(); err != nil {
+			fmt.Printf("Monitor exited with error: %v\n", err)
+		}
+	} else {
+		// if no monitor, then just signal the child process
+		SyncParentSock.Write([]byte("OK"))
+
 	}
 
 

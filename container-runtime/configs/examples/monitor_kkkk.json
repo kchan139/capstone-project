@@ -1,0 +1,19 @@
+{
+    "watch_rules": [
+        {
+            "path" : "/home/khoatran/dir1",
+            "events" : ["open"],
+            "action" : "audit"
+        },
+        {
+            "path" : "/home/khoatran/dir1",
+            "events" : ["read"],
+            "action" : "audit"
+        },
+        {
+            "path" : "/home/khoatran/dir1",
+            "events" : ["exec"],
+            "action" : "block"
+        }
+    ]
+}

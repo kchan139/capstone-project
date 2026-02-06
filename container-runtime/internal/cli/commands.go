@@ -13,6 +13,13 @@ func NewApp() *cli.App {
 			{
 				Name:      "run",
 				Usage:     "Run a container from a config file",
+				Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:  "fanotify-monitor",
+							Usage: "path to the fanotify monitor configuration",
+							Value: "",
+						},
+					},
 				ArgsUsage: "<config.json>",
 				Action:    runCommand,
 			},
@@ -63,6 +70,12 @@ func NewApp() *cli.App {
 				Name:   "start",
 				Usage:  "Signal the created container to start",
 				Action: startCommand,
+			},
+			{
+				Name:   "monitor",
+				Usage:  "Signal the created container to start",
+				Hidden: true,
+				Action: monitorCommand,
 			},
 		},
 	}
