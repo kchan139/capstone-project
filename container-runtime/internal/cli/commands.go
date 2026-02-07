@@ -51,6 +51,11 @@ func NewApp() *cli.App {
 							Usage: "path to unix socket for sending console fd",
 							Value: "",
 						},
+						&cli.StringFlag{
+							Name:  "fanotify-monitor",
+							Usage: "path to the fanotify monitor configuration",
+							Value: "",
+						},
 					},
 				Action: createCommand,
 			},
