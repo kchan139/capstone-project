@@ -222,11 +222,26 @@ func initprocCommand(ctx *cli.Context) error {
 		return fmt.Errorf("failed to set the seccomp : %v", err)
 	}
 
+	//1. child process ready, signal the parent
+	// so that the parent could create the monitor process
+	syncSock := os.NewFile(6, "sync-child-sock")
+	syncSock.Write([]byte("OK"))
+
+	//2. child then stop, waiting for the parent to signal that the monitor is ready
+	buf := make([]byte, 64)
+	n, err := syncSock.Read(buf)
+	if err != nil {
+		fmt.Printf("failed to read from sync socket: %v", err)
+	}
+	_ = string(buf[:n])
+
+
+
 	fd := uintptr(4)
 	fifo_fd := os.NewFile(fd, "inherited-fifo")
 	sync_buf := make([]byte, 100)
 	fmt.Println("before calling fifo read")
-	n, _ := fifo_fd.Read(sync_buf)
+	n, _ = fifo_fd.Read(sync_buf)
 	fmt.Printf("after calling fifo read %d\n", n)
 
 	return  runtime.ExecuteCommand(execPath, execArgs, env)

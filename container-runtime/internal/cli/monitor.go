@@ -303,27 +303,20 @@ func monitorCommand(ctx *cli.Context) error {
 				fileUid, fileGid, filePerms, _ := getFileInfo(os.Getenv("ROOT_FS")+path)
 				// Log the event
 				eventType := monitorfanotify.EventMaskToString(uint64(event.Mask))
-				timestamp := time.Now().Format("15:04:05.000")
-
-				eventLog, err := os.OpenFile("/run/mrunc/" + containerName + "/audit.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-				if err != nil {
-					return fmt.Errorf("failed to open log file: %v", err)
-				}
-				eventUid, eventGid, err := getProcessCredentials(int(event.Pid))
-				logEntry := fmt.Sprintf(
-					"[%s] [%s] %s (PID: %d, ProcUID: %d, ProcGID: %d, FileUID: %d, FileGID: %d, Perms: %04o)\nAction: %v",
-					timestamp, eventType, path,
-					event.Pid, eventUid, eventGid,
-					fileUid, fileGid, filePerms,monitorAction,
+				eventUid, eventGid, _ := getProcessCredentials(int(event.Pid))
+				// write events to audit file
+				specs.AuditAppendEvent(
+					"/run/mrunc/"+containerName+"/audit.json",
+					eventType,
+					path,
+					int(event.Pid),
+					eventUid,
+					eventGid,
+					fileUid,
+					fileGid,
+					filePerms,
+					monitorAction,
 				)
-				fmt.Printf(
-					"[%s] [%s] %s (PID: %d, ProcUID: %d, ProcGID: %d, FileUID: %d, FileGID: %d, Perms: %04o)\nAction: %v",
-					timestamp, eventType, path,
-					event.Pid, eventUid, eventGid,
-					fileUid, fileGid, filePerms,monitorAction,
-				)
-				eventLog.WriteString(logEntry)
-				eventLog.Close()
 				// Close the file descriptor
 				unix.Close(int(event.Fd))
 			}

@@ -4,7 +4,7 @@
     "readonly": false
   },
   "process": {
-    "args": ["/bin/bash"],
+    "args": ["/home/test"],
     "env": [
     ],
     "cwd": "/",
@@ -29,7 +29,7 @@
             "CAP_AUDIT_WRITE"
         ]
     },
-    "terminal": true,
+    "terminal": false,
     "user": {"uid":0, "gid":0}
   },
   "hostname":"mrunc",
