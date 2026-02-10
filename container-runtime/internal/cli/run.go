@@ -6,7 +6,6 @@ import (
 	"io"
 	"golang.org/x/sys/unix"
 	"github.com/containerd/console"
-	"mrunc/internal/config"
 	"mrunc/internal/container"
 	"mrunc/internal/runtime"
 	"os"
@@ -18,25 +17,16 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
 	"github.com/urfave/cli/v2"
 )
 
 func runCommand(ctx *cli.Context) error {
-	var configPath string
+	var bundlePath = ctx.String("bundle")
 	var fanotifyMonitorFilePath = ctx.String("fanotify-monitor")
-	if ctx.NArg() < 2 {
-		// No container name and config specified → use default path
-		baseDir := os.Getenv("MRUNC_BASE")
-		if baseDir == "" {
-			baseDir = config.BaseImageDir
-		}
-		configPath = filepath.Join(baseDir, "ubuntu", "ubuntu.json")
-		fmt.Printf("No config specified, using default: %s\n", configPath)
-	} else {
-		// Use provided config
-		configPath = ctx.Args().Get(1)
-	}
+	var configPath, _ = utils.ResolveConfigPath(bundlePath)
+	fmt.Printf("configPath: %v\n", configPath)
+
+
 	containerId := ctx.Args().Get(0)
 
 	config, err := container.LoadConfig(configPath)
@@ -81,10 +71,14 @@ func runCommand(ctx *cli.Context) error {
 
 	cmd.ExtraFiles = extra
 
-	cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3")
+	cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3", "BUNDLE_PATH=" + bundlePath,)
 	cmd.SysProcAttr = runtime.CreateNamespaces(config)
 
 	// erase when finish debug
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
 
 	if err := cmd.Start(); err != nil {
 		parentPipe.Close()

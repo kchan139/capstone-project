@@ -17,18 +17,15 @@ func childCommand(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("child: failed to receive config: %v", err)
 	}
-
+	var bundlePath = os.Getenv("BUNDLE_PATH")
 
 	// Set hostname
 	if err := syscall.Sethostname([]byte(config.Hostname)); err != nil {
 		return fmt.Errorf("failed to set hostname: %v", err)
 	}
-
-
-
-
-	root_fs := config.RootFS.Path
-	root_fs_putold := config.RootFS.Path + "/put_old"
+	// if rootfs is relative, then append it with the bundlePath
+	root_fs := utils.ResolvePath(config.RootFS.Path, bundlePath)
+	root_fs_putold := root_fs + "/put_old"
 	os.MkdirAll(root_fs_putold, 0755)
 
 	if err := unix.Mount(root_fs, root_fs, "", unix.MS_BIND, ""); err != nil {
