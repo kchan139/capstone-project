@@ -5,6 +5,7 @@ package runtime
 import (
 	"mrunc/pkg/specs"
 	"fmt"
+	"time"
 )
 
 func UpdateStateFile(config *specs.ContainerConfig , containerPid int, status string) error {
@@ -13,6 +14,7 @@ func UpdateStateFile(config *specs.ContainerConfig , containerPid int, status st
 		ContainerID:  config.ContainerId,
 		CgroupPath:   config.CgroupPath,
 		Status:       status,
+		Created:	  time.Now(),
 	}
     if err := state.Validate(); err != nil {
         return fmt.Errorf("invalid container state: %v", err)
