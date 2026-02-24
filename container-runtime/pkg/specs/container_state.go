@@ -103,14 +103,3 @@ func UpdateContainerStatus(filepath, newStatus string) error {
 func GetContainerStateFile(containerID string) string {
     return filepath.Join("/run/mrunc", containerID, "state.json")
 }
-
-// CreateInitialState creates a new container state with default values
-func CreateInitialState(containerID string, pid int, cgroupPath string) *ContainerState {
-    return &ContainerState{
-        ContainerPID: pid,
-        ContainerID:  containerID,
-        CgroupPath:   cgroupPath,
-        Status:       StatusCreated,
-        Created:      time.Now(),
-    }
-}
