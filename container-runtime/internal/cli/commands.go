@@ -92,6 +92,11 @@ func NewApp() *cli.App {
 				Hidden: true,
 				Action: monitorCommand,
 			},
+			{
+				Name:   "list",
+				Usage:  "List all the current container in the machine and their metadata",
+				Action: listCommand,
+			},
 		},
 	}
 }

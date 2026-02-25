@@ -224,7 +224,10 @@ func runCommand(ctx *cli.Context) error {
 
 
 	// ////// TODO: Write data to state.json (container pid, other data)
-	runtime.UpdateStateFile(config, cmd.Process.Pid, "running")
+	if bundlePath == "" {
+		bundlePath, err = os.Getwd()
+	}
+	runtime.UpdateStateFile(config, cmd.Process.Pid, "running",bundlePath)
 	///////
 	if fanotifyMonitorFilePath != "" {
 		// 2. child is ready, fork and run the monitor process

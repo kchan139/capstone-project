@@ -8,13 +8,14 @@ import (
 	"time"
 )
 
-func UpdateStateFile(config *specs.ContainerConfig , containerPid int, status string) error {
+func UpdateStateFile(config *specs.ContainerConfig , containerPid int, status string, bundlePath string) error {
     state := &specs.ContainerState{
 		ContainerPID: containerPid,
 		ContainerID:  config.ContainerId,
 		CgroupPath:   config.CgroupPath,
 		Status:       status,
 		Created:	  time.Now(),
+		BundlePath: bundlePath,
 	}
     if err := state.Validate(); err != nil {
         return fmt.Errorf("invalid container state: %v", err)
