@@ -3,7 +3,6 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"mrunc/internal/config"
 	"mrunc/internal/container"
 	"mrunc/internal/runtime"
 	"os"
@@ -24,22 +23,9 @@ func createCommand(ctx *cli.Context) error {
 	var consoleSockPath string
 	var fanotifyMonitorFilePath = ctx.String("fanotify-monitor")
 	consoleSockPath = ctx.String("console-socket")
-	fmt.Printf("-----------console: %v\n", consoleSockPath)
+	var bundlePath = ctx.String("bundle")
+	var configPath, _ = utils.ResolveConfigPath(bundlePath)
 
-	var configPath string
-
-	if ctx.NArg() < 2 {
-		// No container name and config specified → use default path
-		baseDir := os.Getenv("MRUNC_BASE")
-		if baseDir == "" {
-			baseDir = config.BaseImageDir
-		}
-		configPath = filepath.Join(baseDir, "ubuntu", "ubuntu.json")
-		fmt.Printf("No config specified, using default: %s\n", configPath)
-	} else {
-		// Use provided config
-		configPath = ctx.Args().Get(1)
-	}
 	containerId := ctx.Args().Get(0)
 
 	config, err := container.LoadConfig(configPath)
@@ -77,7 +63,7 @@ func createCommand(ctx *cli.Context) error {
 	cmd.ExtraFiles = extra
 
 
-	cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3")
+	cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3","BUNDLE_PATH="+bundlePath)
 	cmd.SysProcAttr = runtime.CreateNamespaces(config)
 
 
@@ -127,7 +113,7 @@ func createCommand(ctx *cli.Context) error {
         masterFd := fds[0]
 		fmt.Printf("has master fd: %d",masterFd)
 		// ===== connect with outside socket
-		addr, err := net.ResolveUnixAddr("unix", "/tmp/fd_broker.sock")
+		addr, err := net.ResolveUnixAddr("unix", consoleSockPath)
 		if err != nil {
 			log.Fatal(err)
 		}

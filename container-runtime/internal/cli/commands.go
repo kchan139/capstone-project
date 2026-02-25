@@ -19,6 +19,11 @@ func NewApp() *cli.App {
 							Usage: "path to the fanotify monitor configuration",
 							Value: "",
 						},
+						&cli.StringFlag{
+							Name:  "bundle",
+							Usage: "path to the container configuration file",
+							Value: "",
+						},
 					},
 				ArgsUsage: "<config.json>",
 				Action:    runCommand,
@@ -54,6 +59,11 @@ func NewApp() *cli.App {
 						&cli.StringFlag{
 							Name:  "fanotify-monitor",
 							Usage: "path to the fanotify monitor configuration",
+							Value: "",
+						},
+						&cli.StringFlag{
+							Name:  "bundle",
+							Usage: "path to the container configuration file",
 							Value: "",
 						},
 					},

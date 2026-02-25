@@ -29,9 +29,9 @@ func initprocCommand(ctx *cli.Context) error {
 
 
 
-
-	root_fs := config.RootFS.Path
-	root_fs_putold := config.RootFS.Path + "/put_old"
+	var bundlePath = os.Getenv("BUNDLE_PATH")
+	root_fs := utils.ResolvePath(config.RootFS.Path, bundlePath)
+	root_fs_putold := root_fs + "/put_old"
 	os.MkdirAll(root_fs_putold, 0755)
 
 	if err := unix.Mount(root_fs, root_fs, "", unix.MS_BIND, ""); err != nil {

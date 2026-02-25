@@ -6,6 +6,7 @@ import (
     "fmt"
     "os"
     "path/filepath"
+    "time"
 )
 
 // ContainerState represents the runtime state of a container
@@ -14,6 +15,7 @@ type ContainerState struct {
     ContainerID  string `json:"container_id"`
     CgroupPath   string `json:"cgroup_path"`
     Status       string `json:"status"`
+    Created      time.Time `json:"created"`
 }
 
 // Valid status values
@@ -100,14 +102,4 @@ func UpdateContainerStatus(filepath, newStatus string) error {
 // GetContainerStateFile returns the standard path for a container's state file
 func GetContainerStateFile(containerID string) string {
     return filepath.Join("/run/mrunc", containerID, "state.json")
-}
-
-// CreateInitialState creates a new container state with default values
-func CreateInitialState(containerID string, pid int, cgroupPath string) *ContainerState {
-    return &ContainerState{
-        ContainerPID: pid,
-        ContainerID:  containerID,
-        CgroupPath:   cgroupPath,
-        Status:       StatusCreated,
-    }
 }
