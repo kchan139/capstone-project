@@ -97,6 +97,18 @@ func NewApp() *cli.App {
 				Usage:  "List all the current container in the machine and their metadata",
 				Action: listCommand,
 			},
+			{
+				Name:   "delete",
+				Usage:  "Delete all the resources which associate with the container",
+				Action: deleteCommand,
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:    "force",
+						Aliases: []string{"f"},
+						Usage:   "forcibly deletes the container if it is still running",
+					},
+				},
+			},
 		},
 	}
 }

@@ -33,7 +33,7 @@ type ContainerStateInternal struct {
 	Owner   string
 }
 
-func isProcessAlive(pid int) bool {
+func IsProcessAlive(pid int) bool {
 	if pid <= 0 {
 		return false
 	}
@@ -98,7 +98,7 @@ func listCommand(ctx *cli.Context) error {
 			cs.Status = StatusCreated
 			cs.PID = ps.ContainerPID
 		case "running":
-			if isProcessAlive(ps.ContainerPID) {
+			if IsProcessAlive(ps.ContainerPID) {
 				cs.Status = StatusRunning
 				cs.PID = ps.ContainerPID
 			} else {
