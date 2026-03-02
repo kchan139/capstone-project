@@ -92,6 +92,35 @@ func NewApp() *cli.App {
 				Hidden: true,
 				Action: monitorCommand,
 			},
+			{
+				Name:   "list",
+				Usage:  "List all the current container in the machine and their metadata",
+				Action: listCommand,
+			},
+			{
+				Name:   "delete",
+				Usage:  "Delete all the resources which associate with the container",
+				Action: deleteCommand,
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:    "force",
+						Aliases: []string{"f"},
+						Usage:   "forcibly deletes the container if it is still running",
+					},
+				},
+			},
+			{
+				Name:   "kill",
+				Usage:  "Kill the container process.",
+				Action: killCommand,
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:    "all",
+						Aliases: []string{"a"},
+						Usage:   "Kill all processes associating with the container",
+					},
+				},
+			},
 		},
 	}
 }

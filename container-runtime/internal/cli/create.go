@@ -220,7 +220,10 @@ func createCommand(ctx *cli.Context) error {
 	fmt.Printf("After child ready: %v\n",signal)
 
 	// ////// TODO: Write data to state.json (container pid, other data)
-	runtime.UpdateStateFile(config, cmd.Process.Pid, "created")
+	if bundlePath == "" {
+		bundlePath, err = os.Getwd()
+	}
+	runtime.UpdateStateFile(config, cmd.Process.Pid, "created",bundlePath)
 
 	if fanotifyMonitorFilePath != "" {
 		// 2. child is ready, fork and run the monitor process

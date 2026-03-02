@@ -16,6 +16,7 @@ type ContainerState struct {
     CgroupPath   string `json:"cgroup_path"`
     Status       string `json:"status"`
     Created      time.Time `json:"created"`
+    BundlePath      string `json:"bundle_path"`
 }
 
 // Valid status values

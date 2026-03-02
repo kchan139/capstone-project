@@ -154,6 +154,7 @@ func runCommand(ctx *cli.Context) error {
 	// Setup veth pair from parent side if network enabled
 	if config.Linux.Network != nil && config.Linux.Network.EnableNetwork {
 		// // Give child time to setup network namespace
+
 		// time.Sleep(500 * time.Millisecond)
 
 		// Wait for child to setup network namespace by polling for /proc/<pid>/ns/net
@@ -224,7 +225,10 @@ func runCommand(ctx *cli.Context) error {
 
 
 	// ////// TODO: Write data to state.json (container pid, other data)
-	runtime.UpdateStateFile(config, cmd.Process.Pid, "running")
+	if bundlePath == "" {
+		bundlePath, err = os.Getwd()
+	}
+	runtime.UpdateStateFile(config, cmd.Process.Pid, "running",bundlePath)
 	///////
 	if fanotifyMonitorFilePath != "" {
 		// 2. child is ready, fork and run the monitor process
