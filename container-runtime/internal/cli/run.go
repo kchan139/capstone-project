@@ -154,6 +154,7 @@ func runCommand(ctx *cli.Context) error {
 	// Setup veth pair from parent side if network enabled
 	if config.Linux.Network != nil && config.Linux.Network.EnableNetwork {
 		// // Give child time to setup network namespace
+
 		// time.Sleep(500 * time.Millisecond)
 
 		// Wait for child to setup network namespace by polling for /proc/<pid>/ns/net

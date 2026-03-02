@@ -109,6 +109,18 @@ func NewApp() *cli.App {
 					},
 				},
 			},
+			{
+				Name:   "kill",
+				Usage:  "Kill the container process.",
+				Action: killCommand,
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:    "all",
+						Aliases: []string{"a"},
+						Usage:   "Kill all processes associating with the container",
+					},
+				},
+			},
 		},
 	}
 }
