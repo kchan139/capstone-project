@@ -45,7 +45,7 @@ func AuditAppendEvent(
 ) error {
 
 	e := AuditEvent{
-		Timestamp: time.Now().Format(time.RFC3339),
+		Timestamp: time.Now().Format(time.RFC3339Nano),
 		Type:      eventType,
 		Action:    action,
 		File: AuditFileInfo{
