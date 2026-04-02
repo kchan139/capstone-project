@@ -2,9 +2,9 @@ package cli
 
 import (
 	"fmt"
-	"os"
-	"mrunc/pkg/specs"
 	"github.com/urfave/cli/v2"
+	"mrunc/pkg/specs"
+	"os"
 )
 
 func startCommand(ctx *cli.Context) error {
@@ -27,7 +27,6 @@ func startCommand(ctx *cli.Context) error {
 	}
 
 	defer fifoFile.Close()
-
 
 	// update state.json, from created to running
 	specs.UpdateContainerStatus(specs.GetContainerStateFile(containerId), "running")

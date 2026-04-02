@@ -5,10 +5,10 @@ type ContainerConfig struct {
 	Process     ProcessConfig `json:"process"`
 	Hostname    string        `json:"hostname,omitempty"`
 	ContainerId string        `json:"containerId,omitempty"`
-	CgroupPath string        `json:"cgroupPath,omitempty"`
+	CgroupPath  string        `json:"cgroupPath,omitempty"`
 
-	Linux       LinuxConfig   `json:"linux"`
-	Mounts		[]MountConfig	  `json:"mounts"`
+	Linux  LinuxConfig   `json:"linux"`
+	Mounts []MountConfig `json:"mounts"`
 }
 
 type RootfsConfig struct {
@@ -17,14 +17,14 @@ type RootfsConfig struct {
 }
 
 type ProcessConfig struct {
-	Args     []string `json:"args"`
-	Env      []string `json:"env,omitempty"`
-	Cwd      string   `json:"cwd,omitempty"`
-	Terminal bool     `json:"terminal"`
-	User     *User    `json:"user,omitempty"`
+	Args            []string `json:"args"`
+	Env             []string `json:"env,omitempty"`
+	Cwd             string   `json:"cwd,omitempty"`
+	Terminal        bool     `json:"terminal"`
+	User            *User    `json:"user,omitempty"`
 	NoNewPrivileges bool     `json:"noNewPrivileges"`
 
-	Capabilities *ProcessCapabilities  `json:"capabilities,omitempty"`
+	Capabilities *ProcessCapabilities `json:"capabilities,omitempty"`
 }
 type ProcessCapabilities struct {
 	Bounding    []string `json:"bounding,omitempty"`
@@ -40,11 +40,10 @@ type User struct {
 }
 
 type LinuxConfig struct {
-	Resources *LinuxResources `json:"resources,omitempty"`
-	Namespaces []LinuxNamespace `json:"namespaces"`
-	Network   *LinuxNetwork   `json:"network,omitempty"`
-	SeccompConfig *SeccompConfig `json:"seccomp,omitempty"`
-
+	Resources     *LinuxResources  `json:"resources,omitempty"`
+	Namespaces    []LinuxNamespace `json:"namespaces"`
+	Network       *LinuxNetwork    `json:"network,omitempty"`
+	SeccompConfig *SeccompConfig   `json:"seccomp,omitempty"`
 }
 
 type LinuxNamespace struct {
@@ -52,14 +51,14 @@ type LinuxNamespace struct {
 }
 
 type SeccompConfig struct {
-    DefaultAction string          `json:"defaultAction"`
-    Architectures []string        `json:"architectures,omitempty"`
-    Syscalls      []SyscallConfig `json:"syscalls,omitempty"`
+	DefaultAction string          `json:"defaultAction"`
+	Architectures []string        `json:"architectures,omitempty"`
+	Syscalls      []SyscallConfig `json:"syscalls,omitempty"`
 }
 
 type SyscallConfig struct {
-    Names  []string `json:"names"`
-    Action string   `json:"action"`
+	Names  []string `json:"names"`
+	Action string   `json:"action"`
 }
 
 type LinuxResources struct {
@@ -94,8 +93,8 @@ type LinuxNetwork struct {
 }
 
 type MountConfig struct {
-	Destination string `json:"destination"`
-	Type string `json:"type"`
-	Source string `json:"source"`
-	Options []string `json:"options,omitempty"`
+	Destination string   `json:"destination"`
+	Type        string   `json:"type"`
+	Source      string   `json:"source"`
+	Options     []string `json:"options,omitempty"`
 }

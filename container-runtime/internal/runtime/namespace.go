@@ -2,34 +2,34 @@ package runtime
 
 import (
 	"fmt"
+	mySpecs "mrunc/pkg/specs"
 	"os"
 	"syscall"
-	mySpecs "mrunc/pkg/specs"
 )
 
 func CreateNamespaces(config *mySpecs.ContainerConfig) *syscall.SysProcAttr {
 	var cloneFlags uintptr
-    var unshareFlags uintptr
+	var unshareFlags uintptr
 	for _, namespace := range config.Linux.Namespaces {
 		switch namespace.Type {
-			case "pid":
-				cloneFlags |= syscall.CLONE_NEWPID
-			case "network":
-				cloneFlags |= syscall.CLONE_NEWNET
-			case "ipc":
-				cloneFlags |= syscall.CLONE_NEWIPC
-			case "uts":
-				cloneFlags |= syscall.CLONE_NEWUTS
-			case "mount":
-				cloneFlags |= syscall.CLONE_NEWNS
-				unshareFlags |= syscall.CLONE_NEWNS
-			case "cgroup":
-				cloneFlags |= syscall.CLONE_NEWCGROUP
-			default:
-			}
+		case "pid":
+			cloneFlags |= syscall.CLONE_NEWPID
+		case "network":
+			cloneFlags |= syscall.CLONE_NEWNET
+		case "ipc":
+			cloneFlags |= syscall.CLONE_NEWIPC
+		case "uts":
+			cloneFlags |= syscall.CLONE_NEWUTS
+		case "mount":
+			cloneFlags |= syscall.CLONE_NEWNS
+			unshareFlags |= syscall.CLONE_NEWNS
+		case "cgroup":
+			cloneFlags |= syscall.CLONE_NEWCGROUP
+		default:
+		}
 	}
 	return &syscall.SysProcAttr{
-		Cloneflags: cloneFlags,
+		Cloneflags:   cloneFlags,
 		Unshareflags: unshareFlags,
 	}
 }

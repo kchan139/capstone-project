@@ -1,11 +1,10 @@
 package runtime
 
-
 import (
 	"fmt"
+	mySpecs "mrunc/pkg/specs"
 	"os"
 	"path/filepath"
-	mySpecs "mrunc/pkg/specs"
 
 	"golang.org/x/sys/unix"
 )
@@ -18,13 +17,14 @@ type Device struct {
 }
 
 var devices = []Device{
-	{"null",     1, 3, 0666},
-	{"zero",     1, 5, 0666},
-	{"full",     1, 7, 0666},
-	{"random",   1, 8, 0666},
-	{"urandom",  1, 9, 0666},
-	{"tty",      5, 0, 0666},
+	{"null", 1, 3, 0666},
+	{"zero", 1, 5, 0666},
+	{"full", 1, 7, 0666},
+	{"random", 1, 8, 0666},
+	{"urandom", 1, 9, 0666},
+	{"tty", 5, 0, 0666},
 }
+
 func mknodChar(path string, major, minor, mode uint32) error {
 	dev := unix.Mkdev(major, minor)
 	return unix.Mknod(
@@ -34,7 +34,7 @@ func mknodChar(path string, major, minor, mode uint32) error {
 	)
 }
 
-func SetupDev(config *mySpecs.ContainerConfig)  error {
+func SetupDev(config *mySpecs.ContainerConfig) error {
 	root := config.RootFS.Path + "/dev"
 
 	if err := os.MkdirAll(root, 0755); err != nil {
@@ -58,7 +58,6 @@ func SetupDev(config *mySpecs.ContainerConfig)  error {
 		fmt.Printf("created %s (%d:%d)\n", path, d.Major, d.Minor)
 	}
 
-
 	links := map[string]string{
 		root + "/dev/fd":     "/proc/self/fd",
 		root + "/dev/stdin":  "/proc/self/fd/0",
@@ -74,10 +73,9 @@ func SetupDev(config *mySpecs.ContainerConfig)  error {
 	return nil
 }
 func LinkPts(config *mySpecs.ContainerConfig) error {
-	_ = os.Remove(config.RootFS.Path +"/dev/ptmx")
-	return os.Symlink("pts/ptmx", config.RootFS.Path +"/dev/ptmx")
+	_ = os.Remove(config.RootFS.Path + "/dev/ptmx")
+	return os.Symlink("pts/ptmx", config.RootFS.Path+"/dev/ptmx")
 }
-
 
 func BindConsole(slaveFd int) error {
 	consolePath := "/dev/console"

@@ -1,13 +1,13 @@
 package cli
 
 import (
-	"github.com/urfave/cli/v2"
 	"fmt"
-	"path/filepath"
+	"github.com/urfave/cli/v2"
 	"mrunc/pkg/specs"
+	"os"
+	"path/filepath"
 	"syscall"
 	"time"
-	"os"
 )
 
 func deleteCommand(ctx *cli.Context) error {
@@ -19,16 +19,16 @@ func deleteCommand(ctx *cli.Context) error {
 	stateFile := filepath.Join(mruncStateDir, containerId, "state.json")
 	ps, err := specs.LoadContainerState(stateFile)
 	if err != nil {
-		return fmt.Errorf("Error loading state.json: %v\n",err)
+		return fmt.Errorf("Error loading state.json: %v\n", err)
 	}
 	cs := ContainerStateInternal{
 		ID:      ps.ContainerID,
 		Bundle:  ps.BundlePath,
 		Created: ps.Created,
-		PID: ps.ContainerPID,
+		PID:     ps.ContainerPID,
 	}
 
-	if (IsProcessAlive(cs.PID)) {
+	if IsProcessAlive(cs.PID) {
 		force := ctx.Bool("force")
 		if !force {
 			return fmt.Errorf("The container is not stopped yet")

@@ -12,21 +12,21 @@ import (
 )
 
 func CreateCgroup(config *mySpecs.ContainerConfig, pid int) (string, error) {
-    parent_cgroup_path, err := getParentCgroupPath()
+	parent_cgroup_path, err := getParentCgroupPath()
 	if err != nil {
-		return "", fmt.Errorf("get parent cgroup path: %w",err)
+		return "", fmt.Errorf("get parent cgroup path: %w", err)
 	}
 
-	cgroup_path := filepath.Join(parent_cgroup_path,config.ContainerId);
-    if err := os.MkdirAll(cgroup_path, 0755); err != nil {
-        return "", fmt.Errorf("create cgroup dir: %w", err)
-    }
+	cgroup_path := filepath.Join(parent_cgroup_path, config.ContainerId)
+	if err := os.MkdirAll(cgroup_path, 0755); err != nil {
+		return "", fmt.Errorf("create cgroup dir: %w", err)
+	}
 
-    // Attach process
-    procs := filepath.Join(cgroup_path, "cgroup.procs")
-    if err := os.WriteFile(procs, []byte(strconv.Itoa(pid)), 0644); err != nil {
-        return "", fmt.Errorf("add pid to cgroup: %w", err)
-    }
+	// Attach process
+	procs := filepath.Join(cgroup_path, "cgroup.procs")
+	if err := os.WriteFile(procs, []byte(strconv.Itoa(pid)), 0644); err != nil {
+		return "", fmt.Errorf("add pid to cgroup: %w", err)
+	}
 	if config.Linux.Resources != nil {
 		// cpu controllers
 		if config.Linux.Resources.CPU != nil {
@@ -77,10 +77,10 @@ func CreateCgroup(config *mySpecs.ContainerConfig, pid int) (string, error) {
 		}
 	}
 
-    // Optionally, set resource limits:
-    // _ = os.WriteFile(filepath.Join(cgroupPath, "memory.max"), []byte("500M"), 0644)
+	// Optionally, set resource limits:
+	// _ = os.WriteFile(filepath.Join(cgroupPath, "memory.max"), []byte("500M"), 0644)
 
-    return cgroup_path,nil
+	return cgroup_path, nil
 }
 
 func getParentCgroupPath() (string, error) {

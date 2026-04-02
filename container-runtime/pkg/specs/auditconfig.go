@@ -1,35 +1,34 @@
 package specs
 
 import (
-	"time"
-	"os"
 	"encoding/json"
+	"os"
+	"time"
 )
 
 // AuditEvent represents a single security event logged by the integrity monitor
 type AuditEvent struct {
-    Timestamp string           `json:"timestamp"`
-    Type      string           `json:"type"`
-    File      AuditFileInfo    `json:"file"`
-    Process   AuditProcessInfo `json:"process"`
-    Action    string           `json:"action"`
+	Timestamp string           `json:"timestamp"`
+	Type      string           `json:"type"`
+	File      AuditFileInfo    `json:"file"`
+	Process   AuditProcessInfo `json:"process"`
+	Action    string           `json:"action"`
 }
 
 // AuditFileInfo contains metadata about the file involved in the event
 type AuditFileInfo struct {
-    Path        string `json:"path"`
-    Permissions string `json:"permissions"`
-    OwnerUID    int    `json:"owner_uid"`
-    OwnerGID    int    `json:"owner_gid"`
+	Path        string `json:"path"`
+	Permissions string `json:"permissions"`
+	OwnerUID    int    `json:"owner_uid"`
+	OwnerGID    int    `json:"owner_gid"`
 }
 
 // AuditProcessInfo contains metadata about the process that triggered the event
 type AuditProcessInfo struct {
-    PID int `json:"pid"`
-    UID int `json:"uid"`
-    GID int `json:"gid"`
+	PID int `json:"pid"`
+	UID int `json:"uid"`
+	GID int `json:"gid"`
 }
-
 
 func AuditAppendEvent(
 	filepath string,

@@ -1,28 +1,28 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
-	"strconv"
 	"github.com/urfave/cli/v2"
-	"mrunc/pkg/specs"
+	"golang.org/x/sys/unix"
 	"log"
 	"mrunc/internal/monitorfanotify"
-	"runtime"
-	"golang.org/x/sys/unix"
+	"mrunc/pkg/specs"
 	"os"
-	"time"
-	"bufio"
-	"strings"
-	"unsafe"
-	"syscall"
 	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+	"unsafe"
 )
+
 // mountInfo tracks mount information for cleanup
 type mountInfo struct {
 	path    string
 	mounted bool
 }
-
 
 func monitorCommand(ctx *cli.Context) error {
 	containerPid, _ := strconv.Atoi(os.Getenv("CONTAINER_PID"))
@@ -31,13 +31,13 @@ func monitorCommand(ctx *cli.Context) error {
 	log.Printf("At monitor process, get container pid: %d\n", containerPid)
 	// open the fd of container and host mount namespace
 	containerMountNsPath := fmt.Sprintf("/proc/%d/ns/mnt", containerPid)
-    containerMountNsFd, err := unix.Open(containerMountNsPath, unix.O_RDONLY, 0)
+	containerMountNsFd, err := unix.Open(containerMountNsPath, unix.O_RDONLY, 0)
 	if err != nil {
 		return fmt.Errorf("failed to open container mount namespace: %v", err)
 	}
 
 	ownMountNsPath := fmt.Sprintf("/proc/%d/ns/mnt", ownPid)
-    ownMountNsFd, err := unix.Open(ownMountNsPath, unix.O_RDONLY, 0)
+	ownMountNsFd, err := unix.Open(ownMountNsPath, unix.O_RDONLY, 0)
 	// TODO: Setup & enter the container's namespace
 	//////////// paste monitor code here
 	watchPID := containerPid
@@ -196,7 +196,7 @@ func monitorCommand(ctx *cli.Context) error {
 		fmt.Printf("Setting up monitoring for: %s\n", rule.Path)
 
 		// Create bind mount if not mounted
-		if (!isMounted(mounts, rule.Path)) {
+		if !isMounted(mounts, rule.Path) {
 			err = unix.Mount(rule.Path, rule.Path, "", unix.MS_BIND, "")
 			if err != nil {
 				log.Printf("  ✗ Bind mount failed for %s: %v (skipping)", rule.Path, err)
@@ -300,7 +300,7 @@ func monitorCommand(ctx *cli.Context) error {
 				// Get the file path
 				procPath := fmt.Sprintf("/proc/self/fd/%d", event.Fd)
 				path, _ := os.Readlink(procPath)
-				fileUid, fileGid, filePerms, _ := getFileInfo(os.Getenv("ROOT_FS")+path)
+				fileUid, fileGid, filePerms, _ := getFileInfo(os.Getenv("ROOT_FS") + path)
 				// Log the event
 				eventType := monitorfanotify.EventMaskToString(uint64(event.Mask))
 				eventUid, eventGid, _ := getProcessCredentials(int(event.Pid))
@@ -327,7 +327,6 @@ func monitorCommand(ctx *cli.Context) error {
 	}
 	return nil
 }
-
 
 func watchProcess(pid int, cleanup func()) {
 	// Open a pidfd for the process
@@ -361,60 +360,54 @@ func watchProcess(pid int, cleanup func()) {
 	os.Exit(0)
 }
 
-
-
-
 func getProcessCredentials(pid int) (uid, gid int, err error) {
-    statusPath := fmt.Sprintf("/proc/%d/status", pid)
-    file, err := os.Open(statusPath)
-    if err != nil {
-        return 0, 0, fmt.Errorf("failed to open %s: %v", statusPath, err)
-    }
-    defer file.Close()
+	statusPath := fmt.Sprintf("/proc/%d/status", pid)
+	file, err := os.Open(statusPath)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to open %s: %v", statusPath, err)
+	}
+	defer file.Close()
 
-    scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(file)
 
-    for scanner.Scan() {
-        line := scanner.Text()
+	for scanner.Scan() {
+		line := scanner.Text()
 
-        if strings.HasPrefix(line, "Uid:") {
-            fields := strings.Fields(line)
-            if len(fields) >= 2 {
-                uid, _ = strconv.Atoi(fields[1])
-            }
-        }
+		if strings.HasPrefix(line, "Uid:") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				uid, _ = strconv.Atoi(fields[1])
+			}
+		}
 
-        if strings.HasPrefix(line, "Gid:") {
-            fields := strings.Fields(line)
-            if len(fields) >= 2 {
-                gid, _ = strconv.Atoi(fields[1])
-            }
-        }
-    }
+		if strings.HasPrefix(line, "Gid:") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				gid, _ = strconv.Atoi(fields[1])
+			}
+		}
+	}
 
-    return uid, gid, scanner.Err()
+	return uid, gid, scanner.Err()
 }
-
-
 
 func getFileInfo(path string) (uid, gid int, perms os.FileMode, err error) {
-    fileInfo, err := os.Stat(path)
-    if err != nil {
-        return 0, 0, 0, fmt.Errorf("failed to stat file: %v", err)
-    }
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("failed to stat file: %v", err)
+	}
 
-    stat, ok := fileInfo.Sys().(*syscall.Stat_t)
-    if !ok {
-        return 0, 0, 0, fmt.Errorf("failed to get syscall.Stat_t")
-    }
+	stat, ok := fileInfo.Sys().(*syscall.Stat_t)
+	if !ok {
+		return 0, 0, 0, fmt.Errorf("failed to get syscall.Stat_t")
+	}
 
-    uid = int(stat.Uid)
-    gid = int(stat.Gid)
-    perms = fileInfo.Mode().Perm()
+	uid = int(stat.Uid)
+	gid = int(stat.Gid)
+	perms = fileInfo.Mode().Perm()
 
-    return uid, gid, perms, nil
+	return uid, gid, perms, nil
 }
-
 
 func isMounted(mounts []*mountInfo, path string) bool {
 	for _, m := range mounts {

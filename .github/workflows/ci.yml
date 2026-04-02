@@ -1,233 +1,252 @@
 name: CI
 
 on:
-  push:
-    branches: ["main"]
-    paths: ["container-runtime/**", ".github/workflows/**"]
-  pull_request:
-    branches: ["main"]
-    paths: ["container-runtime/**", ".github/workflows/**"]
-  workflow_dispatch:
+    push:
+        branches: ["main"]
+        paths:
+            - "container-runtime/**"
+            - ".github/**"
+            - "copy-file.sh"
+            - "port-forward.sh"
+            - "release.sh"
+            - ".env.example"
+    pull_request:
+        branches: ["main"]
+        paths:
+            - "container-runtime/**"
+            - ".github/**"
+            - "copy-file.sh"
+            - "port-forward.sh"
+            - "release.sh"
+            - ".env.example"
+    workflow_dispatch:
+        inputs:
+            run-privileged:
+                description: "Run privileged runtime smoke test (downloads rootfs and requires sudo)"
+                required: false
+                type: boolean
+                default: false
 
-env:
-  GO_VERSION_MATRIX: "1.24"
+permissions:
+    contents: read
+
+concurrency:
+    group: ci-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
 
 jobs:
-  # ==============================
-  #  Job 1: Build and Basic Tests
-  # ==============================
-  build-and-test:
-    name: Build & Test
-    runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        go-version: [1.24]
-      fail-fast: false
+    preflight:
+        name: Preflight
+        runs-on: ubuntu-24.04
+        timeout-minutes: 5
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+            - name: Validate repository layout
+              run: ./.github/scripts/preflight.sh
 
-      - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v4
-        with:
-          go-version: ${{ matrix.go-version }}
-          cache-dependency-path: container-runtime/go.sum
+    quality-gates:
+        name: Quality gates
+        runs-on: ubuntu-24.04
+        needs: preflight
+        timeout-minutes: 15
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
 
-      - name: Cache Go modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('container-runtime/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-${{ matrix.go-version }}-
-            ${{ runner.os }}-go-
+            - name: Set up Go from go.mod
+              uses: actions/setup-go@v6
+              with:
+                  go-version-file: container-runtime/go.mod
+                  cache: true
+                  cache-dependency-path: container-runtime/go.sum
 
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libseccomp-dev
+            - name: Lint GitHub Actions workflows
+              uses: rhysd/actionlint@main
 
-      - name: Install Go dependencies
-        working-directory: container-runtime
-        run: |
-          go mod download
-          go mod tidy
-          go mod verify
+            - name: Install shellcheck
+              run: sudo apt-get update && sudo apt-get install -y shellcheck
 
-      - name: Build mrunc binary
-        working-directory: container-runtime
-        run: |
-          echo "Building mrunc for Go ${{ matrix.go-version }}"
-          make build
-          ls -la bin/
+            - name: Lint shell scripts
+              run: |
+                  shellcheck \
+                    copy-file.sh \
+                    port-forward.sh \
+                    release.sh \
+                    container-runtime/configs/firewall-setup.sh \
+                    .github/scripts/*.sh
 
-      - name: Run unit tests
-        working-directory: container-runtime
-        run: |
-          echo "Running unit tests..."
-          make test-unit
+            - name: Enforce gofmt
+              working-directory: container-runtime
+              run: |
+                  unformatted="$(find . -type f -name '*.go' -not -path './vendor/*' -print0 | xargs -0 gofmt -l)"
+                  if [[ -n "$unformatted" ]]; then
+                    echo "The following Go files are not gofmt-formatted:"
+                    echo "$unformatted"
+                    exit 1
+                  fi
 
-      - name: Verify mrunc binary
-        working-directory: container-runtime
-        run: |
-          echo "Checking mrunc version..."
-          ./bin/mrunc -v | tee version.txt
-          ./bin/mrunc --version || true
-          echo "Ensuring version string present..."
-          grep -E "mrunc version" version.txt
+    dependency-hygiene:
+        name: Dependency hygiene
+        runs-on: ubuntu-24.04
+        needs: preflight
+        timeout-minutes: 15
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
 
-      - name: Upload mrunc binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: mrunc-binary
-          path: container-runtime/bin/mrunc
+            - name: Set up Go from go.mod
+              uses: actions/setup-go@v6
+              with:
+                  go-version-file: container-runtime/go.mod
+                  cache: true
+                  cache-dependency-path: container-runtime/go.sum
 
-  # ==================================
-  #  Job 2: Security and Code Quality
-  # ==================================
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    needs: build-and-test
+            - name: Install native build dependencies
+              run: sudo apt-get update && sudo apt-get install -y libseccomp-dev
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+            - name: Verify Go module state
+              working-directory: container-runtime
+              run: |
+                  go mod download
+                  go mod verify
+                  go mod tidy
+                  git diff --exit-code -- go.mod go.sum
 
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libseccomp-dev
+    static-analysis:
+        name: Static analysis
+        runs-on: ubuntu-24.04
+        needs: [quality-gates, dependency-hygiene]
+        timeout-minutes: 20
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: "1.24"
+            - name: Set up Go from go.mod
+              uses: actions/setup-go@v6
+              with:
+                  go-version-file: container-runtime/go.mod
+                  cache: true
+                  cache-dependency-path: container-runtime/go.sum
 
-      - name: Trivy FS Scan
-        uses: aquasecurity/trivy-action@0.20.0
-        with:
-          scan-type: fs
-          scan-ref: ./container-runtime
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: 1
-          format: table
+            - name: Install native build dependencies
+              run: sudo apt-get update && sudo apt-get install -y libseccomp-dev
 
-      - name: Scan source with Trivy
-        uses: aquasecurity/trivy-action@0.20.0
-        with:
-          scan-type: fs
-          scan-ref: ./container-runtime
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
+            - name: Run go vet
+              working-directory: container-runtime
+              run: go vet ./...
 
-      - name: Download mrunc binary
-        uses: actions/download-artifact@v4
-        with:
-          name: mrunc-binary
-          path: container-runtime/bin/
+            - name: Install staticcheck
+              run: go install honnef.co/go/tools/cmd/staticcheck@latest
 
-      - name: Trivy Binary Scan
-        uses: aquasecurity/trivy-action@0.20.0
-        with:
-          scan-type: fs
-          scan-ref: container-runtime/bin/mrunc
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: 1
+            - name: Run staticcheck
+              working-directory: container-runtime
+              run: staticcheck ./...
 
-      - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+    test-and-build:
+        name: Test and build
+        runs-on: ubuntu-24.04
+        needs: [quality-gates, dependency-hygiene]
+        timeout-minutes: 20
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
 
-      - name: Run govulncheck
-        working-directory: container-runtime
-        run: govulncheck ./...
+            - name: Set up Go from go.mod
+              uses: actions/setup-go@v6
+              with:
+                  go-version-file: container-runtime/go.mod
+                  cache: true
+                  cache-dependency-path: container-runtime/go.sum
 
-      - name: Run go vet
-        working-directory: container-runtime
-        run: go vet ./...
+            - name: Install native build dependencies
+              run: sudo apt-get update && sudo apt-get install -y libseccomp-dev
 
-      - name: Run staticcheck
-        uses: dominikh/staticcheck-action@v1
-        with:
-          version: latest
-          working-directory: container-runtime
+            - name: Run unit tests
+              working-directory: container-runtime
+              run: go test ./...
 
-  # =========================
-  #  Job 3: Functional Tests
-  # =========================
-  functional-tests:
-    name: Functional Tests
-    runs-on: ubuntu-24.04
-    needs: build-and-test
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+            - name: Run integration-tag smoke tests
+              working-directory: container-runtime
+              run: go test -tags=integration ./tests/...
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+            - name: Build mrunc
+              working-directory: container-runtime
+              run: make build
 
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libseccomp-dev
+            - name: Verify mrunc version output
+              working-directory: container-runtime
+              run: |
+                  ./bin/mrunc version | tee version.txt
+                  grep -q "mrunc version" version.txt
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: "1.24"
-          cache-dependency-path: container-runtime/go.sum
+            - name: Upload build artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: mrunc-linux-amd64
+                  path: |
+                      container-runtime/bin/mrunc
+                      container-runtime/version.txt
+                  if-no-files-found: error
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: mrunc-binary
-          path: container-runtime/bin/
+    security:
+        name: Security scan
+        runs-on: ubuntu-24.04
+        needs: test-and-build
+        timeout-minutes: 20
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
 
-      - name: Make binary executable
-        working-directory: container-runtime
-        run: chmod +x bin/mrunc
+            - name: Set up Go from go.mod
+              uses: actions/setup-go@v6
+              with:
+                  go-version-file: container-runtime/go.mod
+                  cache: true
+                  cache-dependency-path: container-runtime/go.sum
 
-      - name: Initialize rootfs
-        working-directory: container-runtime
-        run: |
-          echo "Initializing Ubuntu rootfs..."
-          sudo ./bin/mrunc init
+            - name: Install native build dependencies
+              run: sudo apt-get update && sudo apt-get install -y libseccomp-dev
 
-          # Verify rootfs was created
-          if [ ! -f /var/lib/mrunc/images/ubuntu/etc/os-release ]; then
-            echo "ERROR: Rootfs initialization failed"
-            exit 1
-          fi
-          echo "✓ Rootfs initialized successfully"
+            - name: Install govulncheck
+              run: go install golang.org/x/vuln/cmd/govulncheck@latest
 
-      - name: Run all tests
-        working-directory: container-runtime
-        run: |
-          echo "Running all tests..."
-          make test-all
+            - name: Run govulncheck
+              working-directory: container-runtime
+              run: govulncheck ./...
 
-      - name: Run tests using config file
-        working-directory: container-runtime
-        timeout-minutes: 3
-        run: |
-          echo "Running functional tests with ci-test.json..."
+            - name: Scan repository with Trivy
+              uses: aquasecurity/trivy-action@v0.35.0
+              with:
+                  scan-type: fs
+                  scan-ref: ./container-runtime
+                  severity: HIGH,CRITICAL
+                  ignore-unfixed: true
+                  exit-code: "1"
+                  format: table
 
-          # Run container test
-          sudo ./bin/mrunc run ci-test-container ./configs/examples/ci-test.json || {
-            echo "ERROR: Container execution failed"
-            exit 1
-          }
+    runtime-smoke:
+        name: Runtime smoke (manual)
+        runs-on: ubuntu-24.04
+        needs: test-and-build
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run-privileged }}
+        timeout-minutes: 30
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
 
-          echo "✓ All functional tests passed:"
-          echo "  - Container execution"
-          echo "  - Namespace isolation"
-          echo "  - Network setup"
-          echo "  - Resource limits"
+            - name: Set up Go from go.mod
+              uses: actions/setup-go@v6
+              with:
+                  go-version-file: container-runtime/go.mod
+                  cache: true
+                  cache-dependency-path: container-runtime/go.sum
 
-      - name: Cleanup artifacts
-        if: always()
-        run: |
-          echo "Cleaning up test artifacts..."
-          sudo ip link delete veth-ci-test 2>/dev/null || true
-          sudo iptables -t nat -F 2>/dev/null || true
-          sudo iptables -F FORWARD 2>/dev/null || true
-          echo "✓ Cleanup completed"
+            - name: Install native build and runtime dependencies
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y libseccomp-dev iproute2 iptables tar
+
+            - name: Run privileged runtime smoke test
+              run: ./.github/scripts/privileged-smoke.sh

@@ -12,9 +12,10 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/sys/unix"
 )
+
 func intermediateCommand(ctx *cli.Context) error {
-parent := os.NewFile(uintptr(3), "parent-sock")
-    defer parent.Close()
+	parent := os.NewFile(uintptr(3), "parent-sock")
+	defer parent.Close()
 	config, err := receiveConfigFrom(parent)
 	if err != nil {
 		return fmt.Errorf("child: failed to receive config: %v", err)
@@ -23,7 +24,6 @@ parent := os.NewFile(uintptr(3), "parent-sock")
 	runtime.CreateCgroup(config, os.Getpid())
 
 	fmt.Println("Running inside limited cgroup for 10 seconds...")
-
 
 	// passing the socket to the init process
 	passedSocket := os.NewFile(uintptr(4), "init-sock")
@@ -39,10 +39,10 @@ parent := os.NewFile(uintptr(3), "parent-sock")
 	cmd.ExtraFiles = []*os.File{passedSocket, fifo_fd}
 	cmd.SysProcAttr = runtime.CreateNamespaces(config)
 	if config.Process.Terminal {
-			fmt.Printf("Starting container in interactive mode\n")
-			cmd.Stdin = os.Stdin
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
+		fmt.Printf("Starting container in interactive mode\n")
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 	} else {
 		fmt.Printf("Starting container in non-interactive mode\n")
 		cmd.Stdin = nil
@@ -54,8 +54,8 @@ parent := os.NewFile(uintptr(3), "parent-sock")
 	}
 	// writing the init PID to the parent process
 	if _, err := parent.Write([]byte(fmt.Sprintf("%d", cmd.Process.Pid))); err != nil {
-        return fmt.Errorf("write pid: %w", err)
-    }
+		return fmt.Errorf("write pid: %w", err)
+	}
 
 	// if err := cmd.Wait(); err != nil {
 	// 	fmt.Printf("Intermediate: Init exited with error: %v\n", err)
@@ -63,19 +63,15 @@ parent := os.NewFile(uintptr(3), "parent-sock")
 	// 	fmt.Println("Intermediate: Init completed successfully")
 	// }
 
-
-
 	return nil
 }
 
-
-
 func receiveConfigFrom(r io.Reader) (*mySpecs.ContainerConfig, error) {
-    // Use a decoder (stops after one JSON doc; no EOF needed)
-    dec := json.NewDecoder(r)
-    var cfg mySpecs.ContainerConfig
-    if err := dec.Decode(&cfg); err != nil {
-        return nil, fmt.Errorf("decode config: %w", err)
-    }
-    return &cfg, nil
+	// Use a decoder (stops after one JSON doc; no EOF needed)
+	dec := json.NewDecoder(r)
+	var cfg mySpecs.ContainerConfig
+	if err := dec.Decode(&cfg); err != nil {
+		return nil, fmt.Errorf("decode config: %w", err)
+	}
+	return &cfg, nil
 }
