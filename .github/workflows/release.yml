@@ -59,8 +59,10 @@ jobs:
 
             - name: Get previous release tag
               id: previous_tag
+              shell: bash
               run: |
-                  TAGS=($(git tag --sort=-creatordate | grep '^v[0-9]'))
+                  mapfile -t TAGS < <(git tag --sort=-creatordate | grep '^v[0-9]')
+
                   if [[ ${#TAGS[@]} -gt 1 ]]; then
                     echo "previous_tag=${TAGS[1]}" >> "$GITHUB_OUTPUT"
                     echo "Previous release: ${TAGS[1]}"
