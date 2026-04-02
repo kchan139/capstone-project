@@ -10,6 +10,7 @@ done
 PROJECT_ROOT="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 
 if [ -f "$PROJECT_ROOT/.env" ]; then
+  # shellcheck source=/dev/null
   source "$PROJECT_ROOT/.env"
 else
   echo ".env not found in $PROJECT_ROOT" >&2
