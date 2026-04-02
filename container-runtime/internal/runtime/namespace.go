@@ -8,8 +8,13 @@ import (
 )
 
 func CreateNamespaces(config *mySpecs.ContainerConfig) *syscall.SysProcAttr {
+	if config == nil {
+		return &syscall.SysProcAttr{}
+	}
+
 	var cloneFlags uintptr
 	var unshareFlags uintptr
+
 	for _, namespace := range config.Linux.Namespaces {
 		switch namespace.Type {
 		case "pid":
@@ -25,9 +30,9 @@ func CreateNamespaces(config *mySpecs.ContainerConfig) *syscall.SysProcAttr {
 			unshareFlags |= syscall.CLONE_NEWNS
 		case "cgroup":
 			cloneFlags |= syscall.CLONE_NEWCGROUP
-		default:
 		}
 	}
+
 	return &syscall.SysProcAttr{
 		Cloneflags:   cloneFlags,
 		Unshareflags: unshareFlags,
