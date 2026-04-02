@@ -131,7 +131,6 @@ func eventMatchesMask(event string, mask uint64) bool {
 	}
 }
 
-
 // func ruleHasEvent(path string, eventType string, rules []WatchRule) bool {
 //     for _, rule := range rules {
 //         if path == rule.Path || isUnderPath(path, rule.Path) {

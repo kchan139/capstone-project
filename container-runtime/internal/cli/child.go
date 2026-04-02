@@ -2,14 +2,14 @@ package cli
 
 import (
 	"fmt"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/sys/unix"
 	"mrunc/internal/runtime"
 	"mrunc/internal/utils"
 	"os"
-	"syscall"
-	"strings"
 	"path/filepath"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/sys/unix"
+	"strings"
+	"syscall"
 )
 
 func childCommand(ctx *cli.Context) error {
@@ -32,7 +32,7 @@ func childCommand(ctx *cli.Context) error {
 		panic(fmt.Errorf("bind mount failed: %w", err))
 	}
 	// mount directories
-	for _,mount := range config.Mounts {
+	for _, mount := range config.Mounts {
 		destination := filepath.Join(root_fs, mount.Destination)
 		if err := os.MkdirAll(destination, 0755); err != nil {
 			return fmt.Errorf("failed to create mount point %s: %v", destination, err)
@@ -41,10 +41,10 @@ func childCommand(ctx *cli.Context) error {
 		var dataOpts []string
 		// handle slightly different for cgroup mounts
 		if mount.Type == "cgroup" || mount.Type == "cgroup2" {
-			if err := syscall.Mount(config.CgroupPath , root_fs + mount.Destination, "", syscall.MS_BIND | syscall.MS_REC,""); err != nil {
+			if err := syscall.Mount(config.CgroupPath, root_fs+mount.Destination, "", syscall.MS_BIND|syscall.MS_REC, ""); err != nil {
 				return fmt.Errorf("failed to mount %s at %s: %v", mount.Source, destination, err)
 			}
-			if err := syscall.Mount("", root_fs + mount.Destination, "", syscall.MS_REMOUNT | syscall.MS_RDONLY | syscall.MS_BIND, ""); err != nil {
+			if err := syscall.Mount("", root_fs+mount.Destination, "", syscall.MS_REMOUNT|syscall.MS_RDONLY|syscall.MS_BIND, ""); err != nil {
 				return fmt.Errorf("failed to mount %s at %s: %v", mount.Source, destination, err)
 			}
 			continue
@@ -63,8 +63,8 @@ func childCommand(ctx *cli.Context) error {
 				flags |= syscall.MS_BIND
 			case "rbind":
 				flags |= syscall.MS_BIND | syscall.MS_REC
-			 case "relatime":
-            	flags |= syscall.MS_RELATIME
+			case "relatime":
+				flags |= syscall.MS_RELATIME
 			case "noatime":
 				flags |= syscall.MS_NOATIME
 			case "strictatime":
@@ -87,7 +87,6 @@ func childCommand(ctx *cli.Context) error {
 		}
 	}
 
-
 	// Pivot root
 	if err := runtime.PivotRoot(root_fs, root_fs_putold); err != nil {
 		return fmt.Errorf("failed to pivot root: %v", err)
@@ -107,7 +106,6 @@ func childCommand(ctx *cli.Context) error {
 	syscall.Unmount("/put_old", syscall.MNT_DETACH)
 	os.RemoveAll("/put_old")
 
-
 	if !config.Process.Terminal {
 		fmt.Printf("Non-interactive mode: detaching from terminal\n")
 		if _, err := syscall.Setsid(); err != nil && err != syscall.EPERM {
@@ -119,28 +117,27 @@ func childCommand(ctx *cli.Context) error {
 		}
 		fmt.Printf("DEBUG CHILD: Looking for console socket at FD 4\n")
 		consoleSock := os.NewFile(uintptr(4), "console-socket")
-        if consoleSock == nil {
-            return fmt.Errorf("no console socket")
-        }
-        defer consoleSock.Close()
+		if consoleSock == nil {
+			return fmt.Errorf("no console socket")
+		}
+		defer consoleSock.Close()
 		fmt.Printf("DEBUG CHILD: Got console socket, fd=%d\n", consoleSock.Fd())
 		// ======= create pty pair
 		pty, closePty, err := runtime.SetupPty()
-        if err != nil {
-            return fmt.Errorf("setup pty: %w", err)
-        }
-        defer closePty()
+		if err != nil {
+			return fmt.Errorf("setup pty: %w", err)
+		}
+		defer closePty()
 		fmt.Printf("DEBUG CHILD: Created PTY, master fd=%d\n", pty.Master.Fd())
-        // ======= Send master FD back to parent via socket
-        rights := unix.UnixRights(int(pty.Master.Fd()))
-        dummy := []byte{0}
-        if err := unix.Sendmsg(int(consoleSock.Fd()), dummy, rights, nil, 0); err != nil {
-            return fmt.Errorf("sendmsg: %w", err)
-        }
-		 fmt.Printf("DEBUG CHILD: Sent master FD successfully\n")
-        // Close master in child - parent owns it now
-        pty.Master.Close()
-
+		// ======= Send master FD back to parent via socket
+		rights := unix.UnixRights(int(pty.Master.Fd()))
+		dummy := []byte{0}
+		if err := unix.Sendmsg(int(consoleSock.Fd()), dummy, rights, nil, 0); err != nil {
+			return fmt.Errorf("sendmsg: %w", err)
+		}
+		fmt.Printf("DEBUG CHILD: Sent master FD successfully\n")
+		// Close master in child - parent owns it now
+		pty.Master.Close()
 
 		// dup slave → 0,1,2
 		for _, fd := range []int{0, 1, 2} {
@@ -152,12 +149,11 @@ func childCommand(ctx *cli.Context) error {
 		if err := unix.IoctlSetInt(0, unix.TIOCSCTTY, 0); err != nil {
 			return fmt.Errorf("TIOCSCTTY: %w", err)
 		}
-		if err:=runtime.BindConsole(int(pty.SlaveFile.Fd())); err != nil {
+		if err := runtime.BindConsole(int(pty.SlaveFile.Fd())); err != nil {
 			return fmt.Errorf("error binding /dev/console: %w", err)
 		}
 
 	}
-
 
 	// Setup network namespace
 	if err := runtime.SetupLoopback(); err != nil {
@@ -194,9 +190,6 @@ func childCommand(ctx *cli.Context) error {
 		return fmt.Errorf("failed to set process user: %v", err)
 	}
 
-
-
-
 	// Execute the process (replace current process)
 	command := config.Process.Args[0]
 	args := config.Process.Args
@@ -211,7 +204,6 @@ func childCommand(ctx *cli.Context) error {
 	if err := runtime.SetupCaps(config); err != nil {
 		return fmt.Errorf("failed to set the capabilities : %v", err)
 	}
-
 
 	// apply seccomp
 	if err := runtime.SetupSeccomp(config.Linux.SeccompConfig); err != nil {
@@ -230,5 +222,5 @@ func childCommand(ctx *cli.Context) error {
 	}
 	_ = string(buf[:n])
 
-	return  runtime.ExecuteCommand(execPath, execArgs, env)
+	return runtime.ExecuteCommand(execPath, execArgs, env)
 }

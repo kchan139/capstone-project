@@ -3,16 +3,16 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"golang.org/x/sys/unix"
+	"log"
 	"mrunc/internal/container"
 	"mrunc/internal/runtime"
+	"mrunc/internal/utils"
+	"net"
 	"os"
 	"os/exec"
-	"mrunc/internal/utils"
-	"golang.org/x/sys/unix"
-	"net"
-	"strconv"
-	"log"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -46,27 +46,22 @@ func createCommand(ctx *cli.Context) error {
 	}
 	var extra []*os.File
 	var parentSock, childSock *os.File
-	var SyncParentSock, SyncChildSock ,_ = utils.SocketPair()
+	var SyncParentSock, SyncChildSock, _ = utils.SocketPair()
 	if config.Process.Terminal {
 		parentSock, childSock, err = utils.SocketPair()
 		if err != nil {
 			return err
 		}
-		extra = []*os.File{childPipe,fifo_fd, childSock, SyncChildSock}
+		extra = []*os.File{childPipe, fifo_fd, childSock, SyncChildSock}
 	} else {
-		extra = []*os.File{childPipe,fifo_fd, nil, SyncChildSock}
+		extra = []*os.File{childPipe, fifo_fd, nil, SyncChildSock}
 	}
-
-
 
 	cmd := exec.Command("/proc/self/exe", "initproc")
 	cmd.ExtraFiles = extra
 
-
-	cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3","BUNDLE_PATH="+bundlePath)
+	cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3", "BUNDLE_PATH="+bundlePath)
 	cmd.SysProcAttr = runtime.CreateNamespaces(config)
-
-
 
 	if err := cmd.Start(); err != nil {
 		parentPipe.Close()
@@ -74,7 +69,7 @@ func createCommand(ctx *cli.Context) error {
 		return err
 	}
 	//----------------------------------------- setup cgroup
-	fmt.Printf("Child PID: %d",cmd.Process.Pid)
+	fmt.Printf("Child PID: %d", cmd.Process.Pid)
 	var cgroupPath string
 	if cgroupPath, err = runtime.CreateCgroup(config, cmd.Process.Pid); err != nil {
 		return fmt.Errorf("failed to create cgroup: %v", err)
@@ -94,24 +89,24 @@ func createCommand(ctx *cli.Context) error {
 	if config.Process.Terminal {
 		childSock.Close()
 		buf := make([]byte, 1)
-        oob := make([]byte, unix.CmsgSpace(4))
-        _, oobn, _, _, err := unix.Recvmsg(int(parentSock.Fd()), buf, oob, 0)
-		 if err != nil {
-            return fmt.Errorf("recvmsg: %w", err)
-        }
+		oob := make([]byte, unix.CmsgSpace(4))
+		_, oobn, _, _, err := unix.Recvmsg(int(parentSock.Fd()), buf, oob, 0)
+		if err != nil {
+			return fmt.Errorf("recvmsg: %w", err)
+		}
 
-        msgs, err := unix.ParseSocketControlMessage(oob[:oobn])
-        if err != nil {
-            return fmt.Errorf("parse control message: %w", err)
-        }
+		msgs, err := unix.ParseSocketControlMessage(oob[:oobn])
+		if err != nil {
+			return fmt.Errorf("parse control message: %w", err)
+		}
 
-        fds, err := unix.ParseUnixRights(&msgs[0])
-        if err != nil {
-            return fmt.Errorf("parse unix rights: %w", err)
-        }
+		fds, err := unix.ParseUnixRights(&msgs[0])
+		if err != nil {
+			return fmt.Errorf("parse unix rights: %w", err)
+		}
 
-        masterFd := fds[0]
-		fmt.Printf("has master fd: %d",masterFd)
+		masterFd := fds[0]
+		fmt.Printf("has master fd: %d", masterFd)
 		// ===== connect with outside socket
 		addr, err := net.ResolveUnixAddr("unix", consoleSockPath)
 		if err != nil {
@@ -142,7 +137,7 @@ func createCommand(ctx *cli.Context) error {
 		response := string(ack[:n])
 		if response == "OK" {
 			fmt.Printf("FD sent successfully with key '%s' (fd=%d)",
-				config.ContainerId,  masterFd, )
+				config.ContainerId, masterFd)
 		} else {
 			log.Fatalf("Failed to send FD: %s", response)
 		}
@@ -217,21 +212,21 @@ func createCommand(ctx *cli.Context) error {
 		fmt.Printf("failed to read from sync socket: %v", err)
 	}
 	signal := string(buf[:n])
-	fmt.Printf("After child ready: %v\n",signal)
+	fmt.Printf("After child ready: %v\n", signal)
 
 	// ////// TODO: Write data to state.json (container pid, other data)
 	if bundlePath == "" {
 		bundlePath, err = os.Getwd()
 	}
-	runtime.UpdateStateFile(config, cmd.Process.Pid, "created",bundlePath)
+	runtime.UpdateStateFile(config, cmd.Process.Pid, "created", bundlePath)
 
 	if fanotifyMonitorFilePath != "" {
 		// 2. child is ready, fork and run the monitor process
 		monitorCmd := exec.Command("/proc/self/exe", "monitor")
 		monitorCmd.Env = append(os.Environ(),
-			"CONTAINER_PID=" + strconv.Itoa(cmd.Process.Pid),
-			"CONTAINER_ID=" + containerId,
-			"FANOTIFY_FILEPATH=" + fanotifyMonitorFilePath,
+			"CONTAINER_PID="+strconv.Itoa(cmd.Process.Pid),
+			"CONTAINER_ID="+containerId,
+			"FANOTIFY_FILEPATH="+fanotifyMonitorFilePath,
 			"ROOT_FS="+config.RootFS.Path,
 		)
 		monitorCmd.Stdin = os.Stdin
@@ -252,7 +247,7 @@ func createCommand(ctx *cli.Context) error {
 			fmt.Printf("failed to read from monitor parent socket: %v", err)
 		}
 		signal = string(buf[:n])
-		fmt.Printf("After monitor ready: %v\n",signal)
+		fmt.Printf("After monitor ready: %v\n", signal)
 		// 4. monitor is ready, send signal to child so child can continue
 		SyncParentSock.Write([]byte("OK"))
 	} else {
@@ -260,9 +255,6 @@ func createCommand(ctx *cli.Context) error {
 		SyncParentSock.Write([]byte("OK"))
 
 	}
-
-
-
 
 	// Cleanup veth on exit
 	if config.Linux.Network != nil && config.Linux.Network.EnableNetwork {

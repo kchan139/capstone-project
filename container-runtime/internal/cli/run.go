@@ -3,21 +3,21 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"golang.org/x/sys/unix"
 	"github.com/containerd/console"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/sys/unix"
+	"io"
 	"mrunc/internal/container"
 	"mrunc/internal/runtime"
+	"mrunc/internal/utils"
 	"os"
 	"os/exec"
-	"mrunc/internal/utils"
-	"strconv"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
-	"github.com/urfave/cli/v2"
 )
 
 func runCommand(ctx *cli.Context) error {
@@ -25,7 +25,6 @@ func runCommand(ctx *cli.Context) error {
 	var fanotifyMonitorFilePath = ctx.String("fanotify-monitor")
 	var configPath, _ = utils.ResolveConfigPath(bundlePath)
 	fmt.Printf("configPath: %v\n", configPath)
-
 
 	containerId := ctx.Args().Get(0)
 
@@ -57,28 +56,27 @@ func runCommand(ctx *cli.Context) error {
 		// 2. create socket pair
 		parentSock, childSock, err = utils.SocketPair()
 		fmt.Printf("DEBUG: Created socketpair - parent fd=%d, child fd=%d\n",
-        parentSock.Fd(), childSock.Fd())
+			parentSock.Fd(), childSock.Fd())
 		if err != nil {
 			return err
 		}
 		extra = []*os.File{childPipe, childSock, SyncChildSock}
 	} else {
 		fmt.Printf("Starting container in non-interactive mode\n")
-		extra = []*os.File{childPipe,nil, SyncChildSock}
+		extra = []*os.File{childPipe, nil, SyncChildSock}
 
 	}
 	cmd := exec.Command("/proc/self/exe", "child")
 
 	cmd.ExtraFiles = extra
 
-	cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3", "BUNDLE_PATH=" + bundlePath,)
+	cmd.Env = append(os.Environ(), "_MRUNC_PIPE_FD=3", "BUNDLE_PATH="+bundlePath)
 	cmd.SysProcAttr = runtime.CreateNamespaces(config)
 
 	// erase when finish debug
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-
 
 	if err := cmd.Start(); err != nil {
 		parentPipe.Close()
@@ -109,31 +107,31 @@ func runCommand(ctx *cli.Context) error {
 		fmt.Printf("DEBUG: Waiting to receive FD from parent socket fd=%d\n", parentSock.Fd())
 		// receive master side of pty
 		buf := make([]byte, 1)
-        oob := make([]byte, unix.CmsgSpace(4))
-        _, oobn, _, _, err := unix.Recvmsg(int(parentSock.Fd()), buf, oob, 0)
-        if err != nil {
-            return fmt.Errorf("recvmsg: %w", err)
-        }
+		oob := make([]byte, unix.CmsgSpace(4))
+		_, oobn, _, _, err := unix.Recvmsg(int(parentSock.Fd()), buf, oob, 0)
+		if err != nil {
+			return fmt.Errorf("recvmsg: %w", err)
+		}
 
-        msgs, err := unix.ParseSocketControlMessage(oob[:oobn])
-        if err != nil {
-            return fmt.Errorf("parse control message: %w", err)
-        }
+		msgs, err := unix.ParseSocketControlMessage(oob[:oobn])
+		if err != nil {
+			return fmt.Errorf("parse control message: %w", err)
+		}
 
-        fds, err := unix.ParseUnixRights(&msgs[0])
-        if err != nil {
-            return fmt.Errorf("parse unix rights: %w", err)
-        }
+		fds, err := unix.ParseUnixRights(&msgs[0])
+		if err != nil {
+			return fmt.Errorf("parse unix rights: %w", err)
+		}
 
-        masterFd := fds[0]
+		masterFd := fds[0]
 		fmt.Printf("DEBUG: Received master FD: %d\n", masterFd)
 
-        masterFile := os.NewFile(uintptr(masterFd), "pty-master")
-        masterConsole, err := console.ConsoleFromFile(masterFile)
-        if err != nil {
-            return fmt.Errorf("console from file: %w", err)
-        }
-        defer masterConsole.Close()
+		masterFile := os.NewFile(uintptr(masterFd), "pty-master")
+		masterConsole, err := console.ConsoleFromFile(masterFile)
+		if err != nil {
+			return fmt.Errorf("console from file: %w", err)
+		}
+		defer masterConsole.Close()
 
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGWINCH)
@@ -141,13 +139,12 @@ func runCommand(ctx *cli.Context) error {
 		stopResize := runtime.StartWinchForwarder(host.Host, masterConsole, sigCh)
 		defer stopResize()
 
-
 		go func() {
-            _, _ = io.Copy(os.Stdout, masterConsole)
-        }()
-        go func() {
-            _, _ = io.Copy(masterConsole, os.Stdin)
-        }()
+			_, _ = io.Copy(os.Stdout, masterConsole)
+		}()
+		go func() {
+			_, _ = io.Copy(masterConsole, os.Stdin)
+		}()
 	}
 	childPipe.Close()
 
@@ -206,7 +203,6 @@ func runCommand(ctx *cli.Context) error {
 		}
 	}
 
-
 	//0. create /run/mrunc/<container-id> to store state.json, and audit.json
 	infoContainerDir := filepath.Join("/run/mrunc", containerId)
 	err = os.MkdirAll(infoContainerDir, 0755)
@@ -221,22 +217,21 @@ func runCommand(ctx *cli.Context) error {
 		fmt.Printf("failed to read from sync socket: %v", err)
 	}
 	signal := string(buf[:n])
-	fmt.Printf("After child ready: %v\n",signal)
-
+	fmt.Printf("After child ready: %v\n", signal)
 
 	// ////// TODO: Write data to state.json (container pid, other data)
 	if bundlePath == "" {
 		bundlePath, err = os.Getwd()
 	}
-	runtime.UpdateStateFile(config, cmd.Process.Pid, "running",bundlePath)
+	runtime.UpdateStateFile(config, cmd.Process.Pid, "running", bundlePath)
 	///////
 	if fanotifyMonitorFilePath != "" {
 		// 2. child is ready, fork and run the monitor process
 		monitorCmd := exec.Command("/proc/self/exe", "monitor")
 		monitorCmd.Env = append(os.Environ(),
-			"CONTAINER_PID=" + strconv.Itoa(cmd.Process.Pid),
-			"CONTAINER_ID=" + containerId,
-			"FANOTIFY_FILEPATH=" + fanotifyMonitorFilePath,
+			"CONTAINER_PID="+strconv.Itoa(cmd.Process.Pid),
+			"CONTAINER_ID="+containerId,
+			"FANOTIFY_FILEPATH="+fanotifyMonitorFilePath,
 			"ROOT_FS="+config.RootFS.Path,
 		)
 		monitorCmd.Stdin = os.Stdin
@@ -257,7 +252,7 @@ func runCommand(ctx *cli.Context) error {
 			fmt.Printf("failed to read from monitor parent socket: %v", err)
 		}
 		signal = string(buf[:n])
-		fmt.Printf("After monitor ready: %v\n",signal)
+		fmt.Printf("After monitor ready: %v\n", signal)
 		// 4. monitor is ready, send signal to child so child can continue
 		SyncParentSock.Write([]byte("OK"))
 
@@ -270,8 +265,6 @@ func runCommand(ctx *cli.Context) error {
 		SyncParentSock.Write([]byte("OK"))
 
 	}
-
-
 
 	if err := cmd.Wait(); err != nil {
 		fmt.Printf("PARENT: Child exited with error: %v\n", err)

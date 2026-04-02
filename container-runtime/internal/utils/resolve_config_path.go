@@ -18,11 +18,10 @@ func ResolveConfigPath(bundlePath string) (string, error) {
 	return filepath.Join(cwd, "config.json"), nil
 }
 
-
 func ResolvePath(p, bundlePath string) string {
-    if filepath.IsAbs(p) {
-        return filepath.Clean(p)
-    }
+	if filepath.IsAbs(p) {
+		return filepath.Clean(p)
+	}
 
-    return filepath.Clean(filepath.Join(bundlePath, p))
+	return filepath.Clean(filepath.Join(bundlePath, p))
 }

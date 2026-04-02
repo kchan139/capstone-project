@@ -5,11 +5,12 @@ import (
 	"log"
 	"strings"
 
-	mySpecs "mrunc/pkg/specs"
-	"os/exec"
 	"github.com/moby/sys/capability"
 	"golang.org/x/sys/unix"
+	mySpecs "mrunc/pkg/specs"
+	"os/exec"
 )
+
 // to test
 func PrintCaps() error {
 	cmd := exec.Command("bash", "-c",

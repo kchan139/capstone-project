@@ -1,14 +1,14 @@
 package utils
+
 import (
-	"os"
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"io"
-	"strconv"
 	"mrunc/pkg/specs"
-
-
+	"os"
+	"strconv"
 )
+
 func ReceiveConfigFromPipe() (*specs.ContainerConfig, error) {
 	// Get pipe FD from environment variable
 	pipeFdStr := os.Getenv("_MRUNC_PIPE_FD")

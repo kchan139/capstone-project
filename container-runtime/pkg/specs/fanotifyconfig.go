@@ -60,7 +60,7 @@ func (c *MonitorConfig) Validate() error {
 			"write":  true,
 			"close":  true,
 			"access": true,
-			"exec": true,
+			"exec":   true,
 		}
 		for _, event := range rule.Events {
 			if !validEvents[event] {

@@ -11,20 +11,20 @@ func NewApp() *cli.App {
 		Version: GetVersion(),
 		Commands: []*cli.Command{
 			{
-				Name:      "run",
-				Usage:     "Run a container from a config file",
+				Name:  "run",
+				Usage: "Run a container from a config file",
 				Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:  "fanotify-monitor",
-							Usage: "path to the fanotify monitor configuration",
-							Value: "",
-						},
-						&cli.StringFlag{
-							Name:  "bundle",
-							Usage: "path to the container configuration file",
-							Value: "",
-						},
+					&cli.StringFlag{
+						Name:  "fanotify-monitor",
+						Usage: "path to the fanotify monitor configuration",
+						Value: "",
 					},
+					&cli.StringFlag{
+						Name:  "bundle",
+						Usage: "path to the container configuration file",
+						Value: "",
+					},
+				},
 				ArgsUsage: "<config.json>",
 				Action:    runCommand,
 			},
@@ -48,25 +48,25 @@ func NewApp() *cli.App {
 				},
 			},
 			{
-				Name:   "create",
-				Usage:  "Create the container but not run it",
+				Name:  "create",
+				Usage: "Create the container but not run it",
 				Flags: []cli.Flag{
-						&cli.StringFlag{
-							Name:  "console-socket",
-							Usage: "path to unix socket for sending console fd",
-							Value: "",
-						},
-						&cli.StringFlag{
-							Name:  "fanotify-monitor",
-							Usage: "path to the fanotify monitor configuration",
-							Value: "",
-						},
-						&cli.StringFlag{
-							Name:  "bundle",
-							Usage: "path to the container configuration file",
-							Value: "",
-						},
+					&cli.StringFlag{
+						Name:  "console-socket",
+						Usage: "path to unix socket for sending console fd",
+						Value: "",
 					},
+					&cli.StringFlag{
+						Name:  "fanotify-monitor",
+						Usage: "path to the fanotify monitor configuration",
+						Value: "",
+					},
+					&cli.StringFlag{
+						Name:  "bundle",
+						Usage: "path to the container configuration file",
+						Value: "",
+					},
+				},
 				Action: createCommand,
 			},
 			{

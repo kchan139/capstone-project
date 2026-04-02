@@ -1,9 +1,10 @@
 package utils
 
 import (
-	"os"
 	"golang.org/x/sys/unix"
+	"os"
 )
+
 func SocketPair() (*os.File, *os.File, error) {
 	fds, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_STREAM, 0)
 	if err != nil {
