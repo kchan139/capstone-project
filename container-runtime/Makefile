@@ -1,6 +1,6 @@
 # MRUNC Container Runtime Makefile
 
-.PHONY: all build clean test test-integration test-namespaces test-filesystem test-lifecycle benchmark security-scan lint help run-dev run-ubuntu create
+.PHONY: all build check-go-version clean test test-integration test-namespaces test-filesystem test-lifecycle benchmark security-scan lint help run-dev run-ubuntu create
 
 # Build configuration
 BINARY_NAME=mrunc
@@ -16,6 +16,8 @@ TEST_CONFIG=$(CONFIG_DIR)/test-container.json
 
 # Go configuration
 GO=go
+GO_REQUIRED_VERSION ?= go1.25.8
+export GOTOOLCHAIN ?= local
 GOOS=$(shell $(GO) env GOOS)
 GOARCH=$(shell $(GO) env GOARCH)
 
@@ -158,8 +160,12 @@ help:
 	@echo "  Git Commit: $(GIT_COMMIT)"
 	@echo "  Build Date: $(BUILD_DATE)"
 
+check-go-version:
+	@test "$$($(GO) env GOVERSION)" = "$(GO_REQUIRED_VERSION)" || \
+	( echo "Expected $(GO_REQUIRED_VERSION), got $$($(GO) env GOVERSION)"; exit 1 )
+
 ##@ Build Commands
-build: ## Build the mrunc binary
+build: check-go-version ## Build the mrunc binary
 	@echo "Building $(BINARY_NAME) $(VERSION)..."
 	@mkdir -p $(BIN_DIR)
 	$(GO) build $(BUILD_FLAGS) -o $(BIN_DIR)/$(BINARY_NAME) $(CMD_DIR)
@@ -200,7 +206,7 @@ create: build ## Create container (Usage: make create NAME=<name> [CONFIG=path])
 ##@ Test Commands
 test: test-unit ## Run all unit tests
 
-test-unit: ## Run unit tests
+test-unit: check-go-version ## Run unit tests
 	@echo "Running unit tests..."
 	$(GO) test -v ./internal/...
 

@@ -34,6 +34,9 @@ concurrency:
     group: ci-${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: true
 
+env:
+    GOTOOLCHAIN: local
+
 jobs:
     preflight:
         name: Preflight
@@ -41,7 +44,7 @@ jobs:
         timeout-minutes: 5
         steps:
             - name: Checkout code
-              uses: actions/checkout@v6
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
             - name: Validate repository layout
               run: ./.github/scripts/preflight.sh
@@ -53,20 +56,20 @@ jobs:
         timeout-minutes: 15
         steps:
             - name: Checkout code
-              uses: actions/checkout@v6
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
             - name: Set up Go from go.mod
-              uses: actions/setup-go@v6
+              uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
               with:
                   go-version-file: container-runtime/go.mod
                   cache: true
                   cache-dependency-path: container-runtime/go.sum
 
             - name: Lint GitHub Actions workflows
-              uses: rhysd/actionlint@main
+              uses: rhysd/actionlint@914e7df21a07ef503a81201c76d2b11c789d3fca
 
             - name: Install shellcheck
-              run: sudo apt-get update && sudo apt-get install -y shellcheck
+              run: sudo apt-get update && sudo apt-get install -y --no-install-recommends shellcheck=0.9.0-1
 
             - name: Lint shell scripts
               run: |
@@ -94,17 +97,17 @@ jobs:
         timeout-minutes: 15
         steps:
             - name: Checkout code
-              uses: actions/checkout@v6
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
             - name: Set up Go from go.mod
-              uses: actions/setup-go@v6
+              uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
               with:
                   go-version-file: container-runtime/go.mod
                   cache: true
                   cache-dependency-path: container-runtime/go.sum
 
             - name: Install native build dependencies
-              run: sudo apt-get update && sudo apt-get install -y libseccomp-dev
+              run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libseccomp-dev=2.5.5-1ubuntu3.1
 
             - name: Verify Go module state
               working-directory: container-runtime
@@ -121,24 +124,24 @@ jobs:
         timeout-minutes: 20
         steps:
             - name: Checkout code
-              uses: actions/checkout@v6
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
             - name: Set up Go from go.mod
-              uses: actions/setup-go@v6
+              uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
               with:
                   go-version-file: container-runtime/go.mod
                   cache: true
                   cache-dependency-path: container-runtime/go.sum
 
             - name: Install native build dependencies
-              run: sudo apt-get update && sudo apt-get install -y libseccomp-dev
+              run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libseccomp-dev=2.5.5-1ubuntu3.1
 
             - name: Run go vet
               working-directory: container-runtime
               run: go vet ./...
 
             - name: Install staticcheck
-              run: go install honnef.co/go/tools/cmd/staticcheck@v0.6.1
+              run: go install honnef.co/go/tools/cmd/staticcheck@v0.7.0
 
             - name: Run staticcheck
               working-directory: container-runtime
@@ -151,25 +154,25 @@ jobs:
         timeout-minutes: 20
         steps:
             - name: Checkout code
-              uses: actions/checkout@v6
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
             - name: Set up Go from go.mod
-              uses: actions/setup-go@v6
+              uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
               with:
                   go-version-file: container-runtime/go.mod
                   cache: true
                   cache-dependency-path: container-runtime/go.sum
 
             - name: Install native build dependencies
-              run: sudo apt-get update && sudo apt-get install -y libseccomp-dev
+              run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libseccomp-dev=2.5.5-1ubuntu3.1
 
             - name: Run unit tests
               working-directory: container-runtime
-              run: go test ./...
+              run: go test -mod=readonly ./...
 
             - name: Run integration-tag smoke tests
               working-directory: container-runtime
-              run: go test -tags=integration ./tests/...
+              run: go test -mod=readonly -tags=integration ./tests/...
 
             - name: Build mrunc
               working-directory: container-runtime
@@ -182,7 +185,7 @@ jobs:
                   grep -q "mrunc version" version.txt
 
             - name: Upload build artifact
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
               with:
                   name: mrunc-linux-amd64
                   path: |
@@ -197,17 +200,17 @@ jobs:
         timeout-minutes: 20
         steps:
             - name: Checkout code
-              uses: actions/checkout@v6
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
             - name: Set up Go from go.mod
-              uses: actions/setup-go@v6
+              uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
               with:
                   go-version-file: container-runtime/go.mod
                   cache: true
                   cache-dependency-path: container-runtime/go.sum
 
             - name: Install native build dependencies
-              run: sudo apt-get update && sudo apt-get install -y libseccomp-dev
+              run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libseccomp-dev=2.5.5-1ubuntu3.1
 
             - name: Install govulncheck
               run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
@@ -217,7 +220,7 @@ jobs:
               run: govulncheck -show verbose ./...
 
             - name: Scan repository with Trivy
-              uses: aquasecurity/trivy-action@v0.35.0
+              uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
               with:
                   scan-type: fs
                   scan-ref: ./container-runtime
@@ -234,10 +237,10 @@ jobs:
         timeout-minutes: 30
         steps:
             - name: Checkout code
-              uses: actions/checkout@v6
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
             - name: Set up Go from go.mod
-              uses: actions/setup-go@v6
+              uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
               with:
                   go-version-file: container-runtime/go.mod
                   cache: true
@@ -246,7 +249,11 @@ jobs:
             - name: Install native build and runtime dependencies
               run: |
                   sudo apt-get update
-                  sudo apt-get install -y libseccomp-dev iproute2 iptables tar
+                  sudo apt-get install -y --no-install-recommends \
+                              libseccomp-dev=2.5.5-1ubuntu3.1 \
+                              iproute2=6.1.0-1ubuntu6.2 \
+                              iptables=1.8.10-3ubuntu2 \
+                              tar=1.35+dfsg-3build1
 
             - name: Run privileged runtime smoke test
               run: ./.github/scripts/privileged-smoke.sh
