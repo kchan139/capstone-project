@@ -216,7 +216,11 @@ func createCommand(ctx *cli.Context) error {
 
 	// ////// TODO: Write data to state.json (container pid, other data)
 	if bundlePath == "" {
-		bundlePath, err = os.Getwd()
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory: %w", err)
+		}
+		bundlePath = cwd
 	}
 	runtime.UpdateStateFile(config, cmd.Process.Pid, "created", bundlePath)
 

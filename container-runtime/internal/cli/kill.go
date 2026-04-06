@@ -44,7 +44,7 @@ func parseSignal(sigStr string) (syscall.Signal, error) {
 
 func killCommand(ctx *cli.Context) error {
 	if ctx.NArg() < 1 {
-		return fmt.Errorf("Missing container name")
+		return fmt.Errorf("missing container name")
 	}
 	containerId := ctx.Args().Get(0)
 	// second arg = signal (optional)
@@ -61,10 +61,10 @@ func killCommand(ctx *cli.Context) error {
 	stateFile := filepath.Join(mruncStateDir, containerId, "state.json")
 	ps, err := specs.LoadContainerState(stateFile)
 	if err != nil {
-		return fmt.Errorf("Error loading state.json: %v\n", err)
+		return fmt.Errorf("error loading state.json: %v", err)
 	}
 	if ps.Status != "created" && ps.Status != "running" {
-		return fmt.Errorf("Container is not created or running")
+		return fmt.Errorf("container is not created or running")
 	}
 	cs := ContainerStateInternal{
 		ID:      ps.ContainerID,

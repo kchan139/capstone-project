@@ -12,14 +12,14 @@ import (
 
 func deleteCommand(ctx *cli.Context) error {
 	if ctx.NArg() < 1 {
-		return fmt.Errorf("Missing container name")
+		return fmt.Errorf("missing container name")
 	}
 	containerId := ctx.Args().Get(0)
 	// 1. Get the information from /run/mrunc/<containerId>
 	stateFile := filepath.Join(mruncStateDir, containerId, "state.json")
 	ps, err := specs.LoadContainerState(stateFile)
 	if err != nil {
-		return fmt.Errorf("Error loading state.json: %v\n", err)
+		return fmt.Errorf("error loading state.json: %v", err)
 	}
 	cs := ContainerStateInternal{
 		ID:      ps.ContainerID,
@@ -31,7 +31,7 @@ func deleteCommand(ctx *cli.Context) error {
 	if IsProcessAlive(cs.PID) {
 		force := ctx.Bool("force")
 		if !force {
-			return fmt.Errorf("The container is not stopped yet")
+			return fmt.Errorf("container is not stopped yet")
 		}
 		// kill the container
 		if err := syscall.Kill(cs.PID, syscall.SIGKILL); err != nil {

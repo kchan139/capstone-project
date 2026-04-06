@@ -95,41 +95,46 @@ func EventMaskToString(mask uint64) string {
 	return result
 }
 
-// shouldBlockEvent determines if an event should be blocked based on rules
-func shouldBlockEvent(path string, rules []specs.WatchRule) bool {
-	for _, rule := range rules {
-		// Check if path matches the rule's path or is under it
-		if path == rule.Path || isUnderPath(path, rule.Path) {
-			// If action is block, block this event
-			if rule.Action == "block" {
-				return true
-			}
-		}
-	}
-	return false
-}
+/*
+ *
+ * Temporarily commented out, undo when they're wired to actual logic
+ *
+ */
 
+// shouldBlockEvent determines if an event should be blocked based on rules
+// func shouldBlockEvent(path string, rules []specs.WatchRule) bool {
+// 	for _, rule := range rules {
+// 		// Check if path matches the rule's path or is under it
+// 		if path == rule.Path || isUnderPath(path, rule.Path) {
+// 			// If action is block, block this event
+// 			if rule.Action == "block" {
+// 				return true
+// 			}
+// 		}
+// 	}
+// 	return false
+// }
 // isUnderPath checks if filePath is under dirPath
-func isUnderPath(filePath, dirPath string) bool {
-	// Simple prefix check - you might want to use filepath.HasPrefix or more robust checking
-	return len(filePath) > len(dirPath) && filePath[:len(dirPath)] == dirPath
-}
+// func isUnderPath(filePath, dirPath string) bool {
+// 	// Simple prefix check - you might want to use filepath.HasPrefix or more robust checking
+// 	return len(filePath) > len(dirPath) && filePath[:len(dirPath)] == dirPath
+// }
 
 // eventMatchesMask checks if an event string matches the fanotify mask
-func eventMatchesMask(event string, mask uint64) bool {
-	switch event {
-	case "open":
-		return mask&(unix.FAN_OPEN|unix.FAN_OPEN_PERM) != 0
-	case "read":
-		return mask&(unix.FAN_ACCESS|unix.FAN_ACCESS_PERM) != 0
-	case "exec":
-		return mask&(unix.FAN_OPEN_EXEC|unix.FAN_OPEN_EXEC_PERM) != 0
-	case "write":
-		return mask&unix.FAN_MODIFY != 0
-	default:
-		return false
-	}
-}
+// func eventMatchesMask(event string, mask uint64) bool {
+// 	switch event {
+// 	case "open":
+// 		return mask&(unix.FAN_OPEN|unix.FAN_OPEN_PERM) != 0
+// 	case "read":
+// 		return mask&(unix.FAN_ACCESS|unix.FAN_ACCESS_PERM) != 0
+// 	case "exec":
+// 		return mask&(unix.FAN_OPEN_EXEC|unix.FAN_OPEN_EXEC_PERM) != 0
+// 	case "write":
+// 		return mask&unix.FAN_MODIFY != 0
+// 	default:
+// 		return false
+// 	}
+// }
 
 // func ruleHasEvent(path string, eventType string, rules []WatchRule) bool {
 //     for _, rule := range rules {
