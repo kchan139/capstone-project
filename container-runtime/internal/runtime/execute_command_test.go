@@ -27,11 +27,11 @@ func TestPrepareExec(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:        "command not found falls back to shell",
+			name:        "command not found returns error",
 			command:     "nonexistent",
 			args:        []string{"nonexistent"},
 			env:         []string{"PATH=/usr/bin:/bin"},
-			expectError: false,
+			expectError: true,
 		},
 	}
 

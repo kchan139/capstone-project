@@ -38,6 +38,11 @@ func monitorCommand(ctx *cli.Context) error {
 
 	ownMountNsPath := fmt.Sprintf("/proc/%d/ns/mnt", ownPid)
 	ownMountNsFd, err := unix.Open(ownMountNsPath, unix.O_RDONLY, 0)
+	if err != nil {
+			return fmt.Errorf("failed to open host mount namespace: %v", err)
+	}
+	defer unix.Close(containerMountNsFd)
+	defer unix.Close(ownMountNsFd)
 	// TODO: Setup & enter the container's namespace
 	//////////// paste monitor code here
 	watchPID := containerPid
@@ -246,11 +251,13 @@ func monitorCommand(ctx *cli.Context) error {
 	if hasBlockAction {
 		fmt.Printf("\n✓ Successfully monitoring %d/%d paths (PERMISSION mode - blocking enabled)\n",
 			len(mounts), len(validRules))
-		fmt.Println("Events will be BLOCKED according to rules... (Ctrl+C to stop)\n")
+		fmt.Println("Events will be BLOCKED according to rules... (Ctrl+C to stop)")
+		fmt.Println()
 	} else {
 		fmt.Printf("\n✓ Successfully monitoring %d/%d paths (NOTIFICATION mode - audit only)\n",
 			len(mounts), len(validRules))
-		fmt.Println("Events are logged but NOT blocked... (Ctrl+C to stop)\n")
+		fmt.Println("Events are logged but NOT blocked... (Ctrl+C to stop)")
+		fmt.Println()
 	}
 	monitorSock := os.NewFile(3, "monitor-sock")
 	monitorSock.Write([]byte("OK"))
@@ -325,7 +332,6 @@ func monitorCommand(ctx *cli.Context) error {
 		}
 		firstIterate += 1
 	}
-	return nil
 }
 
 func watchProcess(pid int, cleanup func()) {

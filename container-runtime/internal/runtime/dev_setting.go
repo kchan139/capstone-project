@@ -51,18 +51,17 @@ func SetupDev(config *mySpecs.ContainerConfig) error {
 		_ = os.Remove(path)
 
 		if err := mknodChar(path, d.Major, d.Minor, d.Mode); err != nil {
-			return fmt.Errorf("mknod %s failed: %v\n", path, err)
-			continue
+			return fmt.Errorf("mknod %s failed: %w", path, err)
 		}
 
 		fmt.Printf("created %s (%d:%d)\n", path, d.Major, d.Minor)
 	}
 
 	links := map[string]string{
-		root + "/dev/fd":     "/proc/self/fd",
-		root + "/dev/stdin":  "/proc/self/fd/0",
-		root + "/dev/stdout": "/proc/self/fd/1",
-		root + "/dev/stderr": "/proc/self/fd/2",
+		root + "/fd":     "/proc/self/fd",
+		root + "/stdin":  "/proc/self/fd/0",
+		root + "/stdout": "/proc/self/fd/1",
+		root + "/stderr": "/proc/self/fd/2",
 	}
 	for dst, src := range links {
 		_ = os.Remove(dst) // ignore error

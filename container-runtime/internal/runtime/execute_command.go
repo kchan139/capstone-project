@@ -11,17 +11,23 @@ import (
 // PrepareExec resolves the command path BEFORE seccomp is applied
 // This avoids needing stat/access syscalls after seccomp
 func PrepareExec(command string, args []string, env []string) (string, []string, error) {
-	// If absolute path, use directly
 	if filepath.IsAbs(command) {
 		return command, args, nil
 	}
 
-	// Try PATH resolution
-	if resolvedPath, err := resolvePath(command, env); err == nil {
-		args[0] = resolvedPath
-		return resolvedPath, args, nil
+	resolvedPath, err := resolvePath(command, env)
+	if err != nil {
+		return "", nil, fmt.Errorf("resolve exec path for %q: %w", command, err)
 	}
-	return "", []string{""}, nil
+
+	resolvedArgs := append([]string(nil), args...)
+	if len(resolvedArgs) == 0 {
+		resolvedArgs = []string{resolvedPath}
+	} else {
+		resolvedArgs[0] = resolvedPath
+	}
+
+	return resolvedPath, resolvedArgs, nil
 }
 
 // ExecuteCommand performs the actual exec - call AFTER seccomp is applied
