@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"github.com/urfave/cli/v2"
 )
 
@@ -43,7 +44,7 @@ func NewApp() *cli.App {
 				Name:  "version",
 				Usage: "Show detailed version information",
 				Action: func(ctx *cli.Context) error {
-					println(GetVersionInfo())
+					fmt.Fprintln(ctx.App.Writer, GetVersionInfo())
 					return nil
 				},
 			},
