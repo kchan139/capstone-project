@@ -39,7 +39,7 @@ func monitorCommand(ctx *cli.Context) error {
 	ownMountNsPath := fmt.Sprintf("/proc/%d/ns/mnt", ownPid)
 	ownMountNsFd, err := unix.Open(ownMountNsPath, unix.O_RDONLY, 0)
 	if err != nil {
-			return fmt.Errorf("failed to open host mount namespace: %v", err)
+		return fmt.Errorf("failed to open host mount namespace: %v", err)
 	}
 	defer unix.Close(containerMountNsFd)
 	defer unix.Close(ownMountNsFd)
