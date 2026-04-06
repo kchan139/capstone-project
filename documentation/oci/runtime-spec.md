@@ -1,301 +1,124 @@
-# OCI Runtime Specification Compliance Map
-
-**Last Updated:** [Sep 29, 2025]
-**MRUNC Version:** [0.1.1]
-
----
-
-## Executive Summary
-
-### Compliance Status
-- **Overall Compliance:** [X]% implemented
-- **Target Compliance Level:** [Full/Partial/Inspired-by]
-- **Primary Goal:** [Educational/Production/Research]
-
-### Quick Stats
-- ✅ Implemented: [X] features
-- ⚠️ Partially Implemented: [X] features
-- ❌ Not Implemented: [X] features
-- 🔮 Planned: [X] features
-
----
-
-## 1. Configuration Structure
-
-### 1.1 Container Configuration (config.json)
-
-| OCI Requirement | Status | MRUNC Implementation | Notes |
-|----------------|--------|---------------------|-------|
-| `ociVersion` | ❌ | Not present | We use custom format |
-| `root.path` | ✅ | `root.path` | Implemented |
-| `root.readonly` | ✅ | `root.readonly` | Implemented |
-| `process.args` | ✅ | `process.args` | Implemented |
-| `process.env` | ✅ | `process.env` | Implemented |
-| `process.cwd` | ✅ | `process.cwd` | Implemented |
-| `process.terminal` | ✅ | `process.terminal` | Implemented |
-| `process.user` | ✅ | `process.user` | Implemented (uid, gid) |
-| `process.capabilities` | ❌ | Not implemented | Planned |
-| `process.rlimits` | ❌ | Not implemented | |
-| `process.noNewPrivileges` | ❌ | Not implemented | |
-| `process.apparmorProfile` | ❌ | Not implemented | |
-| `process.selinuxLabel` | ❌ | Not implemented | |
-| `hostname` | ✅ | `hostname` | Implemented |
-| `mounts` | ❌ | Hardcoded (proc only) | |
-| `hooks` | ❌ | Not implemented | |
-| `annotations` | ❌ | Not implemented | |
-| `linux` | ⚠️ | Partially | See section 2 |
-
-**Deviation Rationale:**
-- [Explain why config format differs]
-- [Document conscious design choices]
-
----
-
-## 2. Linux-Specific Configuration
-
-### 2.1 Namespaces
-
-| Namespace Type | OCI Spec | Status | Implementation Location |
-|---------------|----------|--------|------------------------|
-| PID | Required | ✅ | `runtime/namespace.go:12` |
-| Network | Required | ❌ | Not implemented |
-| Mount | Required | ✅ | `runtime/namespace.go:12` |
-| IPC | Required | ❌ | Not implemented |
-| UTS | Required | ✅ | `runtime/namespace.go:12` |
-| User | Optional | ❌ | Attempted but incomplete |
-| Cgroup | Optional | ❌ | Not implemented |
-
-**Implementation Notes:**
-```go
-// Current implementation
-Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS
-```
-
-**Issues:**
-- [Document any namespace-related bugs or limitations]
-
-### 2.2 Control Groups (cgroups)
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| cgroups v2 support | ❌ | Mentioned in README but not implemented |
-| Resource limits (CPU) | ❌ | |
-| Resource limits (Memory) | ❌ | |
-| Resource limits (I/O) | ❌ | |
-| Device access control | ❌ | |
-
-### 2.3 Security
-
-| Feature | OCI Spec | Status | Notes |
-|---------|----------|--------|-------|
-| Seccomp profiles | Optional | ❌ | Mentioned in README |
-| Capabilities | Optional | ❌ | |
-| AppArmor | Optional | ❌ | |
-| SELinux | Optional | ❌ | |
-| No new privileges | Optional | ❌ | |
-| Masked paths | Optional | ❌ | |
-| Readonly paths | Optional | ❌ | |
-
-### 2.4 User and Group Management
-
-| Feature | Status | Implementation | Notes |
-|---------|--------|---------------|-------|
-| User ID mapping | ✅ | `runtime/user.go` | Basic implementation |
-| Group ID mapping | ✅ | `runtime/user.go` | Basic implementation |
-| Additional GIDs | ⚠️ | Supported in config | Not tested |
-| UID/GID validation | ✅ | `runtime/user.go:ValidateUser()` | Range: 0-65535 |
-
----
+# Runtime reference
 
-## 3. Filesystem
-
-### 3.1 Root Filesystem
-
-| Requirement | Status | Implementation | Notes |
-|------------|--------|---------------|-------|
-| pivot_root | ✅ | `runtime/filesystem.go` | Using raw syscall |
-| Bind mount support | ⚠️ | Hardcoded for rootfs | |
-| Mount propagation | ❌ | Not implemented | |
-| rootfs readonly option | ✅ | Config supported | Not enforced |
+## Commands
 
-**Current Implementation:**
-```go
-// From child.go
-unix.Mount(root_fs, root_fs, "", unix.MS_BIND, "")
-PivotRoot(root_fs, root_fs_putold)
-```
-
-### 3.2 Mounts
-
-| Feature | OCI Spec | Status | Notes |
-|---------|----------|--------|-------|
-| Procfs | Standard | ✅ | Hardcoded in child.go |
-| Sysfs | Standard | ❌ | |
-| Devfs | Standard | ❌ | |
-| Tmpfs | Standard | ❌ | |
-| Custom mounts | Required | ❌ | |
-| Mount options | Required | ❌ | |
-
----
-
-## 4. Runtime and Lifecycle
-
-### 4.1 State Machine
-
-OCI defines container states: creating → created → running → stopped
-
-| State | Status | Notes |
-|-------|--------|-------|
-| Creating | ⚠️ | Implicit, not exposed |
-| Created | ❌ | No separate create command |
-| Running | ✅ | Via `run` command |
-| Stopped | ⚠️ | Implicit when process exits |
-
-**Current Lifecycle:**
-```
-run command → child process → exec → [container runs] → exit
-```
-
-### 4.2 Runtime Operations
-
-| Operation | OCI Spec | Status | Implementation |
-|-----------|----------|--------|---------------|
-| create | Required | ❌ | Combined with start |
-| start | Required | ⚠️ | Merged into `run` |
-| kill | Required | ❌ | |
-| delete | Required | ❌ | |
-| state | Required | ❌ | |
-
-**Deviation Notes:**
-- We use a single `run` command instead of separate create/start
-- No container ID tracking
-- No state persistence
-
----
-
-## 5. Process Execution
-
-### 5.1 Command Execution
-
-| Feature | Status | Implementation | Notes |
-|---------|--------|---------------|-------|
-| Exec with PATH resolution | ✅ | `runtime/ExecuteCommand.go` | Fallback chain |
-| Absolute path execution | ✅ | `runtime/ExecuteCommand.go:tryDirectExec()` | |
-| Environment variables | ✅ | `cli/child.go` | Full support |
-| Working directory | ✅ | `cli/child.go` | Via chdir |
-| Shell fallback | ⚠️ | Implemented | Security warning logged |
-
-### 5.2 Standard Streams
+The current CLI provides these user-facing commands:
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| stdin (interactive) | ✅ | When terminal=true |
-| stdout | ✅ | Connected |
-| stderr | ✅ | Connected |
-| Non-interactive mode | ✅ | Stdin detached when terminal=false |
-
----
-
-## 6. Inter-Process Communication
-
-### 6.1 Parent-Child Communication
-
-| Mechanism | Purpose | Implementation |
-|-----------|---------|---------------|
-| Pipe (config transfer) | Send config to child | `cli/run.go`, `cli/child.go` |
-| Environment variable | Pass pipe FD | `_MRUNC_PIPE_FD` |
-| Process wait | Lifecycle sync | `cmd.Wait()` |
-
-**Configuration Passing:**
-```go
-// Parent serializes config → pipe → Child deserializes
-configData, _ := json.Marshal(config)
-parentPipe.Write(configData)
-```
-
----
-
-## 7. Known Gaps and Limitations
-
-### Critical Missing Features
-1. **No container isolation tracking** - No way to list/manage running containers
-2. **Missing network namespace** - Containers share host network
-3. **No cgroups** - No resource limits
-4. **No IPC namespace** - Shared IPC with host
-5. **No hooks support** - Can't inject custom logic at lifecycle events
-
-### Security Concerns
-1. No seccomp filtering
-2. No capability dropping
-3. Shell fallback in command execution
-4. Running as root required
-
-### Functional Limitations
-1. Single rootfs per config (no layers/overlays)
-2. No mount management
-3. No device management
-4. Config format incompatible with OCI bundles
-
----
-
-## 8. Future Roadmap
-
-### High Priority (Must Have)
-- [ ] Basic cgroups v2 support
-- [ ] Seccomp profiles
-- [ ] Capability dropping
-
-### Medium Priority (Should Have)
-- [ ] Standard mount points (dev, sys)
-- [ ] Rootless container support
-- [ ] Container state tracking
-
-### Low Priority (Nice to Have)
-- [ ] Full OCI config.json compatibility
-- [ ] User namespace improvements
-
-### Out of Scope
-- [ ] Network namespace support
-- [ ] AppArmor/SELinux support
-- [ ] IPC namespace support
-- [ ] Volume management
-- [ ] Hooks support
-
----
-
-## 9. Testing Against OCI
-
-### Test Results
-- [ ] OCI runtime tools validation: [Not attempted/Pass/Fail]
-- [ ] runc comparison test: [Status]
-- [ ] OCI bundle compatibility: [Status]
-
-### Test Commands
-```bash
-# Add commands used to test OCI compliance
-```
-
----
-
-## 10. References
-
-- [OCI Runtime Specification](https://github.com/opencontainers/runtime-spec/blob/main/spec.md)
-- [OCI Runtime Config](https://github.com/opencontainers/runtime-spec/blob/main/config.md)
-- [OCI Runtime Linux Spec](https://github.com/opencontainers/runtime-spec/blob/main/config-linux.md)
-
----
-
-## Notes
-
-**Purpose of This Document:**
-This document maps our implementation against the OCI Runtime Specification to:
-1. Track what we've built vs. what the standard defines
-2. Document conscious deviations and their rationale
-3. Guide future development priorities
-4. Serve as reference for thesis defense/documentation
-
-**How to Use:**
-- Update this as features are added
-- Mark implementation locations for easy reference
-- Document *why* we deviate, not just *that* we deviate
-- Keep the "Known Gaps" section honest for academic integrity
+| Command | Purpose |
+|---|---|
+| `run` | Create and run a container from a bundle. |
+| `create` | Create a container and wait for `start`. |
+| `start` | Start a container that was created earlier. |
+| `list` | List containers and their metadata. |
+| `kill` | Signal a container process or all processes in its cgroup. |
+| `delete` | Remove container runtime state and related resources. |
+| `init` | Download the default Ubuntu rootfs and example config. |
+| `version` | Print version, commit, and build date. |
+
+The runtime also uses these internal commands:
+
+- `child`
+- `intermediate`
+- `initproc`
+- `monitor`
+
+## Bundle handling
+
+`run` and `create` accept `--bundle` and load `config.json` from that directory.
+
+## Runtime state
+
+The runtime stores container state under `/run/mrunc/<container-id>/`.
+
+`start` signals the created container by opening `/run/mrunc/<container-id>/exec.fifo` and writing one byte.
+
+## Namespaces
+
+The runtime maps `linux.namespaces` into `syscall.SysProcAttr` clone flags for:
+
+- `pid`
+- `network`
+- `ipc`
+- `uts`
+- `mount`
+- `cgroup`
+
+## Filesystem setup
+
+The container process path:
+
+1. bind-mounts the rootfs,
+2. applies configured mounts,
+3. bind-mounts the cgroup path for `cgroup` and `cgroup2` mounts,
+4. calls `pivot_root`,
+5. changes working directory,
+6. removes `/put_old`.
+
+## Mount options
+
+The runtime mount parser handles:
+
+- `nosuid`
+- `noexec`
+- `nodev`
+- `ro`
+- `readonly`
+- `bind`
+- `rbind`
+- `relatime`
+- `noatime`
+- `strictatime`
+
+## Devices and terminal
+
+When `/dev` is prepared, the runtime creates:
+
+- `/dev/null`
+- `/dev/zero`
+- `/dev/full`
+- `/dev/random`
+- `/dev/urandom`
+- `/dev/tty`
+
+When `process.terminal` is true, the runtime sets up a pty and can send the console file descriptor through `--console-socket`.
+
+## Cgroups
+
+The runtime creates a cgroup v2 directory and writes:
+
+- `cpu.weight`
+- `cpu.max`
+- `memory.max`
+- `memory.low`
+- `memory.swap.max`
+- `pids.max`
+
+## Networking
+
+If `linux.network.enableNetwork` is true, the runtime can:
+
+- create a veth pair,
+- move one side into the container network namespace,
+- bring up loopback,
+- configure the container IP address,
+- add the default route,
+- write `/etc/resolv.conf`,
+- run the configured firewall script,
+- remove the host veth on exit.
+
+`linux.network` is a project-specific extension used by the checked-in examples.
+
+## Capabilities and seccomp
+
+Before `exec`, the runtime can:
+
+- apply capability sets from `process.capabilities`,
+- set `PR_SET_NO_NEW_PRIVS` when `process.noNewPrivileges` is true,
+- load a seccomp profile from `linux.seccomp`.
+
+## `init`
+
+`mrunc init` does two things:
+
+1. downloads and extracts the Ubuntu 24.04 minimal rootfs into `/var/lib/mrunc/images/ubuntu`,
+2. downloads the default `ubuntu.json` example config into that directory.

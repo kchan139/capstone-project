@@ -1,94 +1,134 @@
 {
-    // MRUNC follows OCI 1.x structure, but implements only a subset.
-    "ociVersion": "1.1.0",
-    "process": {
-        "terminal": true,
-        "cwd": "/",
-        "args": [
-            "/bin/bash"
-        ],
-        "env": [            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-        ],
-        "user": {
-            "uid": 0,
-            "gid": 0,
-            "additionalGids": [10, 20]
-        },
-        "noNewPrivileges": true,
-        "capabilities": {
-            "bounding":   ["CAP_CHOWN", "CAP_DAC_OVERRIDE"],
-            "effective":  ["CAP_CHOWN"],
-            "permitted":  ["CAP_CHOWN"],
-            "inheritable": [],
-            "ambient":     []
-        }
-    },
-    "root": {
-        "path": "rootfs",
-        "readonly": false
-    },
-	"hostname": "test-container",
-    "mounts": [
-        {
-            "destination": "/proc",
-            "type": "proc"
-        },
-        {
-            "destination": "/tmp",
-            "type": "tmpfs",
-            "source": "tmpfs",
-            "options": ["nosuid", "nodev", "noexec"]
-        },
-        {
-            "destination": "/mnt/data",
-            "type": "bind",
-            "source": "/data/host",
-            "options": ["rbind", "ro", "nosuid", "nodev", "noexec"]
-        }
+  "root": {
+    "path": "/var/lib/mrunc/images/ubuntu",
+    "readonly": false
+  },
+  "process": {
+    "args": [
+      "/bin/sh",
+      "-c",
+      "echo hello from mrunc && hostname && sleep 1"
     ],
-    "linux": {
-        // Namespace configuration
-        "namespaces": [
-            { "type": "mount" },
-            { "type": "pid" },
-            { "type": "uts" },
-            { "type": "ipc" },     
-            { "type": "network" }   
-        ],
-        "maskedPaths": [],
-        "readonlyPaths": [],
-
-        "resources": {
-            "pids": {
-                "limit": 100
-            },
-            "cpu": {
-                "max": "50000 100000",
-                "weight": 200
-            },
-            "memory": {
-                "limit": 536870912,
-                "swap": 536870912     
-            },
-        },
-        "network": {
-			"enableNetwork": true,
-		      "containerIP": "10.0.0.2/24",
-		      "gatewayCIDR": "10.0.0.1/24",
-            "vethHost": "veth-mrunc-0",
-            "vethContainer": "ceth0",
-            "dns": ["8.8.8.8", "8.8.4.4", "1.1.1.1"],
-            "firewallScript": "./configs/firewall-setup.sh"
-		},
-        "seccomp": {
-            "defaultAction": "SCMP_ACT_KILL",
-            "architectures": ["SCMP_ARCH_X86_64"],
-            "syscalls": [
-                {
-                    "names": ["read", "write", "exit", "execve"],
-                    "action": "SCMP_ACT_ALLOW"
-                }
-            ]
-        }
+    "env": [
+      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    ],
+    "cwd": "/",
+    "terminal": false,
+    "noNewPrivileges": true,
+    "capabilities": {
+      "bounding": [
+        "CAP_AUDIT_WRITE",
+        "CAP_KILL",
+        "CAP_NET_BIND_SERVICE"
+      ],
+      "permitted": [
+        "CAP_AUDIT_WRITE",
+        "CAP_KILL"
+      ],
+      "effective": [
+        "CAP_AUDIT_WRITE"
+      ],
+      "inheritable": [
+        "CAP_AUDIT_WRITE"
+      ],
+      "ambient": [
+        "CAP_AUDIT_WRITE"
+      ]
+    },
+    "user": {
+      "uid": 0,
+      "gid": 0
     }
+  },
+  "hostname": "mrunc-demo",
+  "mounts": [
+    {
+      "destination": "/proc",
+      "type": "proc",
+      "source": "proc"
+    },
+    {
+      "destination": "/dev",
+      "type": "tmpfs",
+      "source": "tmpfs",
+      "options": [
+        "nosuid",
+        "strictatime",
+        "mode=755",
+        "size=65536k"
+      ]
+    },
+    {
+      "destination": "/sys/fs/cgroup",
+      "type": "cgroup2",
+      "source": "cgroup2",
+      "options": [
+        "nosuid",
+        "noexec",
+        "nodev",
+        "relatime",
+        "ro"
+      ]
+    }
+  ],
+  "linux": {
+    "resources": {
+      "cpu": {
+        "shares": 1024,
+        "quota": 50000,
+        "period": 100000
+      },
+      "memory": {
+        "limit": 268435456,
+        "reservation": 268435456,
+        "swap": 268435456
+      },
+      "pids": {
+        "limit": 50
+      }
+    },
+    "namespaces": [
+      { "type": "pid" },
+      { "type": "network" },
+      { "type": "ipc" },
+      { "type": "uts" },
+      { "type": "mount" },
+      { "type": "cgroup" }
+    ],
+    "network": {
+      "enableNetwork": true,
+      "containerIP": "10.0.0.10/24",
+      "gatewayCIDR": "10.0.0.1/24",
+      "vethHost": "veth-ci-test",
+      "vethContainer": "ceth0",
+      "dns": [
+        "8.8.8.8",
+        "1.1.1.1"
+      ],
+      "firewallScript": "./configs/firewall-setup.sh"
+    },
+    "seccomp": {
+      "defaultAction": "SCMP_ACT_ERRNO",
+      "architectures": [
+        "SCMP_ARCH_X86_64"
+      ],
+      "syscalls": [
+        {
+          "names": [
+            "read",
+            "write",
+            "exit",
+            "exit_group",
+            "execve",
+            "openat",
+            "close",
+            "futex",
+            "rt_sigaction",
+            "rt_sigprocmask"
+          ],
+          "action": "SCMP_ACT_ALLOW"
+        }
+      ]
+    }
+  }
 }

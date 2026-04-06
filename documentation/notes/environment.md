@@ -1,41 +1,52 @@
-# Infrastructure-as-Code (IaC) Rationale
+# `environment/` overview
 
-## Purpose of `environment/`
+`environment/` contains infrastructure, provisioning, and remote development files.
 
-This project involves **low-level container runtime programming** that directly manipulates Linux namespaces, mounts, and root filesystems.  
-Such experiments **can** break or corrupt the operating system if misconfigured — especially when run as `root`.
+## Terraform
 
-The `environment/` directory exists to provide an **automated, repeatable, and secure way** to rebuild the development environment from scratch.
+`environment/terraform/` defines:
 
----
+- the DigitalOcean provider,
+- one droplet named `capstone-project`,
+- image `ubuntu-24-04-x64`,
+- region `sgp1`,
+- size `s-2vcpu-4gb`,
+- two SSH keys attached to the droplet,
+- one firewall attached to that droplet.
 
-## Why Terraform + Ansible?
+The firewall currently allows:
 
-1. **Instant Recovery from OS Breakage**  
-   - If a droplet is rendered unusable during testing, it can be destroyed and recreated in minutes.
-   - No manual setup steps — all provisioning is automated.
+- inbound TCP on `var.custom_ssh_port`,
+- inbound ICMP,
+- outbound TCP, UDP, and ICMP.
 
-2. **Consistent Baseline**  
-   - Every rebuild includes the same security hardening, firewall rules, users, and tooling.
-   - Ensures reproducibility for both development and demonstration.
+## Ansible
 
-3. **Security by Default**  
-   - SSH key-based login only, custom ports, root login disabled, firewall locked down.
-   - Prevents misconfigurations from leaving the system exposed after a rebuild.
+`environment/ansible/playbook.yml` provisions the server with:
 
-4. **Disposable Test Environments**  
-   - Multiple identical droplets can be created for destructive tests without risking the main development server.
+- stopped and masked unattended update services,
+- base packages such as `make`, `curl`, `tree`, `bat`, and `software-properties-common`,
+- timezone `Asia/Ho_Chi_Minh`,
+- two sudo users from vault variables,
+- UFW rules,
+- SSH on port `22` and the custom SSH port,
+- disabled password authentication and root login,
+- Starship, Helix, Yazi, and Go,
+- Go workspace directories for both users,
+- `gopls`, `dlv`, and `goimports` in `/usr/local/bin`,
+- `/var/lib/mrunc/images/`,
+- an Ubuntu 24.04 minimal rootfs extracted into `/var/lib/mrunc/images/ubuntu`.
 
----
+## Helper scripts
 
-## What’s Inside
+`environment/ansible/scripts/` contains:
 
-- **`terraform/`** → Creates a DigitalOcean droplet and configures networking + firewall rules.
-- **`ansible/`** → Provisions the droplet with necessary tools (Docker, VSCode Server, etc.) and applies security hardening.
-- **`vsc-server/`** → Docker-based remote development environment.
+- `run.sh` — builds an inventory from Terraform output and runs the playbook as `root`.
+- `re-run.sh` — rebuilds inventory and reruns the playbook with become.
+- `generate-ssh-keys.sh` — helper referenced by the key generation playbook.
 
----
+These scripts expect local access to `tofu`, `jq`, `ansible`, and `ansible-vault`.
 
-## TL;DR
-`environment/` is our **reset button**.  
-If (when) something breaks during low-level OS experiments, we can rebuild a secure, ready-to-use development server in minutes.
+## OpenVSCode
+
+`environment/vsc-server/compose.yml.j2` contains the OpenVSCode Server compose template used by the remote development setup.

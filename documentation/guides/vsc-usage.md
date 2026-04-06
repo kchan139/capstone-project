@@ -1,71 +1,55 @@
-# VS Code Server Setup Guide
+# SSH forwarding and OpenVSCode
 
-This document explains how to use the OpenVSCode Server (`vsc-server`) provisioned via Ansible in this project.
+This repo includes:
 
-## Prerequisites
+- `port-forward.sh` for SSH local port forwarding.
+- `environment/vsc-server/compose.yml.j2` as an OpenVSCode Server compose template.
 
-- SSH access to the server.
+## `.env` file
 
-## Accessing VS Code Server Container
+`port-forward.sh` reads connection details from `.env` in the repo root.
 
-### 1. SSH into the server:
+Start from the template:
+
 ```bash
-ssh -L <local_port>:127.0.0.1:<remote_port> <username>@<server_ip> -p <ssh_port>
+cp .env.example .env
 ```
-#### Notes
 
-- `<local_port>` → any free port on your local machine; the port you will use in your browser.
-- `<remote_port>` → the port that the VS Code container is listening on the host (as defined in `compose.yml`).
-- `<username>` → server username
-- `<server_ip>` → server’s public IP
-- `<ssh_port>` → custom SSH port on the server
+Set:
 
-#### Alternative: using the helper script
-Instead of typing the full SSH command every time, you can use the included `port-forward.sh` script:
+- `USERNAME`
+- `SERVER_IP`
+- `SSH_PORT`
+- `PORTS`
+- `REMOTE_HOST`
+
+`PORTS` is a space-separated list of `<local-port>:<remote-port>` mappings.
+
+Example:
+
+```bash
+PORTS="8080:80 3000:3000"
+REMOTE_HOST="127.0.0.1"
+```
+
+## Start port forwarding
+
 ```bash
 ./port-forward.sh
 ```
 
-This script loads connection details from your `.env` file.
-Copy `example.env` to `.env`, fill in your values, and then run the script.
+The script expands each entry in `PORTS` into an SSH `-L` rule and opens an SSH session to `$USERNAME@$SERVER_IP` on `$SSH_PORT`.
 
-### 2. Each user has a dedicated Docker Compose setup located in their home directory:
-```
-/home/<username>/compose.yml
-```
+## OpenVSCode compose template
 
-### 3. Start the OpenVSCode Server container:
+`environment/vsc-server/compose.yml.j2` defines one service:
 
-```bash
-docker compose up -d
-```
-
-### 4. Access VS Code in your browser at:
-```
-http://localhost:<local_port>
-```
-
-## Stopping the Container
-
-To stop VS Code for your user:
-
-```bash
-docker compose down
-```
-
-## Updating VS Code Server
-
-If you want to update VS Code:
-
-```bash
-docker compose pull
-docker compose up -d
-```
-
-## Notes
-
-* All workspace files are mounted to `~/workspace` in the container.
-
----
-
-> This setup ensures isolated VS Code environments per user with Docker and proper UID/GID mapping.
+- service name: `openvscode`
+- image: `gitpod/openvscode-server`
+- container port: `3000`
+- host bind: `127.0.0.1:{{ item.port }}:3000`
+- workspace mount: `.:/home/workspace:cached`
+- runtime user: `{{ item.uid }}:{{ item.gid }}`
+- `stdin_open: true`
+- `tty: true`
+- `restart: unless-stopped`

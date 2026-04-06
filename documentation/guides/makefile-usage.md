@@ -1,66 +1,78 @@
-# Makefile Usage
+# Makefile usage
 
-The `container-runtime/Makefile` provides common build and run commands for `mrunc`.
+Run all commands below from `container-runtime/`.
 
 ## Build
 
 ```bash
+make version
 make build
+make build-race
 ```
-→ Compiles the binary into `bin/mrunc`.
 
-## Run
+- `version` prints build metadata.
+- `build` writes `bin/mrunc`.
+- `build-race` writes `bin/mrunc-race`.
+
+## Test
 
 ```bash
-make run
-```
-→ Runs the built binary with default container name `default` and config `configs/examples/ubuntu.json`.
-
-### Development Mode
-
-```bash
-make run-dev
-```
-→ Runs with `go run` using container name `dev`, useful for quick testing.
-
-### Ubuntu Container
-```bash
-make run-ubuntu
-```
-→ Runs with `go run` using container name `ubuntu`.
-
-### Custom Config
-
-```bash
-make run-custom NAME=mycontainer CONFIG=path/to/config.json
-```
-→ Runs with custom container name and config.
-
-### Run Built Binary with Custom Config
-```bash
-make run-bin NAME=mycontainer CONFIG=path/to/config.json
+make test
+make test-unit
+make test-integration
+make test-coverage
+make test-all
 ```
 
-## Create Container
-```bash
-make create NAME=mycontainer [CONFIG=path/to/config.json]
-```
-→ Creates a named container. Uses default config if not specified.
+## Maintenance
 
-## Clean
 ```bash
 make clean
+make install
+make dev-setup
+make help
 ```
 
-→ Removes build artifacts.
+## Runtime flow
 
-## Install
+Build the binary first:
 
 ```bash
-make install
+make build
 ```
 
-→ Installs `mrunc` to your local Go bin directory.
+Initialize the default Ubuntu rootfs and config:
 
----
-> TL;DR: Use `make build && make run` for production testing, or `make run-dev` for quick development runs. All run commands follow the pattern: `mrunc run <container-name> <config.json>`
+```bash
+sudo ./bin/mrunc init
+```
+
+Run from a bundle directory that contains `config.json`:
+
+```bash
+sudo ./bin/mrunc run --bundle /path/to/bundle <container-id>
+```
+
+Create and start separately:
+
+```bash
+sudo ./bin/mrunc create --bundle /path/to/bundle <container-id>
+sudo ./bin/mrunc start <container-id>
+```
+
+Inspect and clean up:
+
+```bash
+./bin/mrunc list
+sudo ./bin/mrunc kill <container-id>
+sudo ./bin/mrunc delete <container-id>
+```
+
+## Toolchain check
+
+`make build` and `make test-unit` call `check-go-version`.
+
+```bash
+go env GOVERSION
+# go1.25.8
+```
