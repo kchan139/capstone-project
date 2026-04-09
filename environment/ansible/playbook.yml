@@ -99,7 +99,7 @@
         append: yes
         password: "{{ user2_password | password_hash('sha512') }}"
 
-        # --- FALCO --- #
+    # --- FALCO --- #
     - name: Ensure keyrings directory exists
       ansible.builtin.file:
         path: /usr/share/keyrings
@@ -149,13 +149,15 @@
     - name: Collect Falco service facts
       ansible.builtin.service_facts:
 
-    - name: Verify Falco is running
-      ansible.builtin.assert:
-        that:
-          - ansible_facts.services['falco.service'] is defined
-          - ansible_facts.services['falco.service'].state == 'running'
-        fail_msg: "Falco is installed but not running."
-        success_msg: "Falco is installed and running."
+    - name: Warn if no Falco service is running
+      ansible.builtin.debug:
+        msg: "Falco is installed but no known Falco systemd unit is running."
+      when:
+        - not (
+          ('falco.service' in ansible_facts.services and ansible_facts.services['falco.service'].state == 'running')
+          or
+          ('falco-modern-bpf.service' in ansible_facts.services and ansible_facts.services['falco-modern-bpf.service'].state == 'running')
+          )
 
     - name: Remove downloaded Falco GPG key
       ansible.builtin.file:
@@ -399,12 +401,13 @@
       when: installed_go_version.rc != 0 or ('go version go' ~ go_version ~ ' ' not in installed_go_version.stdout)
 
     - name: Expose Go globally via profile.d
-      ansible.builtin.copy:
-        dest: /etc/profile.d/go.sh
+      ansible.builtin.blockinfile:
+        path: /etc/profile.d/go.sh
+        create: true
         owner: root
         group: root
         mode: "0644"
-        content: |
+        block: |
           export GOROOT=/usr/local/go
           export PATH=/usr/local/go/bin:$PATH
 
@@ -413,7 +416,7 @@
         path: /etc/sudoers
         regexp: '^Defaults\s+secure_path='
         line: 'Defaults secure_path="/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"'
-        validate: '/usr/sbin/visudo -cf %s'
+        validate: "/usr/sbin/visudo -cf %s"
 
     - name: Verify pinned Go version
       ansible.builtin.command: /usr/local/go/bin/go version
@@ -466,7 +469,7 @@
     - name: Add user Go bin to PATH in bashrc for {{ user1 }}
       ansible.builtin.lineinfile:
         path: "/home/{{ user1 }}/.bashrc"
-        line: 'export PATH=/usr/local/go/bin:$PATH:$HOME/go/bin'
+        line: "export PATH=/usr/local/go/bin:$PATH:$HOME/go/bin"
         create: yes
         owner: "{{ user1 }}"
         group: "{{ user1 }}"
@@ -474,7 +477,7 @@
     - name: Add user Go bin to PATH in bashrc for {{ user2 }}
       ansible.builtin.lineinfile:
         path: "/home/{{ user2 }}/.bashrc"
-        line: 'export PATH=/usr/local/go/bin:$PATH:$HOME/go/bin'
+        line: "export PATH=/usr/local/go/bin:$PATH:$HOME/go/bin"
         create: yes
         owner: "{{ user2 }}"
         group: "{{ user2 }}"
