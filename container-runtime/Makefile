@@ -226,7 +226,6 @@ test-all: test-unit test-integration ## Run all tests
 clean: ## Remove build artifacts
 	@echo "Cleaning build artifacts..."
 	@rm -rf $(BIN_DIR) coverage.out coverage.html
-	@$(GO) clean
 
 install: build ## Install binary to GOPATH
 	@echo "Installing $(BINARY_NAME)..."

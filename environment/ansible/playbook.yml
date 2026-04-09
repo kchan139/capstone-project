@@ -360,11 +360,72 @@
         state: absent
 
     # --- GO INSTALLATION --- #
-    - name: Install Go via apt
-      ansible.builtin.apt:
-        name: golang-go
-        state: present
-        update_cache: yes
+    - name: Set Go version
+      ansible.builtin.set_fact:
+        go_version: "1.25.8"
+        go_arch: "amd64"
+        go_install_dir: "/usr/local"
+        go_root: "/usr/local/go"
+        go_tarball: "/tmp/go1.25.8.linux-amd64.tar.gz"
+        go_download_url: "https://go.dev/dl/go1.25.8.linux-amd64.tar.gz"
+
+    - name: Check installed Go version
+      ansible.builtin.command: /usr/local/go/bin/go version
+      register: installed_go_version
+      changed_when: false
+      failed_when: false
+
+    - name: Download pinned Go toolchain
+      ansible.builtin.get_url:
+        url: "{{ go_download_url }}"
+        dest: "{{ go_tarball }}"
+        mode: "0644"
+        timeout: 300
+      when: installed_go_version.rc != 0 or ('go version go' ~ go_version ~ ' ' not in installed_go_version.stdout)
+
+    - name: Remove existing Go installation
+      ansible.builtin.file:
+        path: "{{ go_root }}"
+        state: absent
+      when: installed_go_version.rc != 0 or ('go version go' ~ go_version ~ ' ' not in installed_go_version.stdout)
+
+    - name: Install pinned Go toolchain
+      ansible.builtin.unarchive:
+        src: "{{ go_tarball }}"
+        dest: "{{ go_install_dir }}"
+        remote_src: yes
+        owner: root
+        group: root
+      when: installed_go_version.rc != 0 or ('go version go' ~ go_version ~ ' ' not in installed_go_version.stdout)
+
+    - name: Expose Go globally via profile.d
+      ansible.builtin.copy:
+        dest: /etc/profile.d/go.sh
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          export GOROOT=/usr/local/go
+          export PATH=/usr/local/go/bin:$PATH
+
+    - name: Add Go to secure_path for sudo
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        regexp: '^Defaults\s+secure_path='
+        line: 'Defaults secure_path="/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"'
+        validate: '/usr/sbin/visudo -cf %s'
+
+    - name: Verify pinned Go version
+      ansible.builtin.command: /usr/local/go/bin/go version
+      register: go_version_check
+      changed_when: false
+
+    - name: Assert Go version is correct
+      ansible.builtin.assert:
+        that:
+          - "'go version go{{ go_version }} ' in go_version_check.stdout"
+        fail_msg: "Installed Go version does not match {{ go_version }}"
+        success_msg: "Pinned Go {{ go_version }} installed correctly"
 
     - name: Create Go workspace directories for {{ user1 }}
       ansible.builtin.file:
@@ -392,6 +453,8 @@
 
     - name: Install Go tools globally
       ansible.builtin.shell: |
+        export GOROOT=/usr/local/go
+        export PATH=/usr/local/go/bin:$PATH
         export GOPATH=/opt/go
         export GOBIN=/usr/local/bin
         go install golang.org/x/tools/gopls@latest
@@ -403,7 +466,7 @@
     - name: Add user Go bin to PATH in bashrc for {{ user1 }}
       ansible.builtin.lineinfile:
         path: "/home/{{ user1 }}/.bashrc"
-        line: "export PATH=$PATH:$HOME/go/bin"
+        line: 'export PATH=/usr/local/go/bin:$PATH:$HOME/go/bin'
         create: yes
         owner: "{{ user1 }}"
         group: "{{ user1 }}"
@@ -411,10 +474,15 @@
     - name: Add user Go bin to PATH in bashrc for {{ user2 }}
       ansible.builtin.lineinfile:
         path: "/home/{{ user2 }}/.bashrc"
-        line: "export PATH=$PATH:$HOME/go/bin"
+        line: 'export PATH=/usr/local/go/bin:$PATH:$HOME/go/bin'
         create: yes
         owner: "{{ user2 }}"
         group: "{{ user2 }}"
+
+    - name: Remove downloaded Go tarball
+      ansible.builtin.file:
+        path: "{{ go_tarball }}"
+        state: absent
 
     # --- ROOTFS SETUP --- #
     - name: Create rootfs images directory
