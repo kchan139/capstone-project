@@ -2,7 +2,7 @@ module mrunc
 
 go 1.25.0
 
-toolchain go1.25.8
+toolchain go1.25.9
 
 require (
 	github.com/containerd/console v1.0.5
