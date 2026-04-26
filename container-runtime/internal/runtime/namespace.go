@@ -14,7 +14,7 @@ func CreateNamespaces(config *mySpecs.ContainerConfig) *syscall.SysProcAttr {
 
 	var cloneFlags uintptr
 	var unshareFlags uintptr
-
+	// just create new namespaces specified in the configuration file
 	for _, namespace := range config.Linux.Namespaces {
 		switch namespace.Type {
 		case "pid":
@@ -34,7 +34,7 @@ func CreateNamespaces(config *mySpecs.ContainerConfig) *syscall.SysProcAttr {
 	}
 
 	return &syscall.SysProcAttr{
-		Cloneflags:   cloneFlags,
+		// Cloneflags:   cloneFlags,
 		Unshareflags: unshareFlags,
 	}
 }
