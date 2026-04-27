@@ -34,7 +34,7 @@ func CreateNamespaces(config *mySpecs.ContainerConfig) *syscall.SysProcAttr {
 	}
 
 	return &syscall.SysProcAttr{
-		// Cloneflags:   cloneFlags,
+		Cloneflags:   cloneFlags,
 		Unshareflags: unshareFlags,
 	}
 }
