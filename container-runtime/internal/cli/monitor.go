@@ -263,7 +263,7 @@ func monitorCommand(ctx *cli.Context) error {
 	monitorSock.Write([]byte("OK"))
 
 	// Finish setting up, signal back to parent
-	buf := make([]byte, 4096)
+	buf := make([]byte, 65536)
 	firstIterate := 0
 	// Event processing loop
 	for {
