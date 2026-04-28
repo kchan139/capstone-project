@@ -99,6 +99,71 @@
         append: yes
         password: "{{ user2_password | password_hash('sha512') }}"
 
+    # --- FALCO --- #
+    - name: Ensure keyrings directory exists
+      ansible.builtin.file:
+        path: /usr/share/keyrings
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Download Falco GPG key
+      ansible.builtin.get_url:
+        url: https://falco.org/repo/falcosecurity-packages.asc
+        dest: /tmp/falcosecurity-packages.asc
+        mode: "0644"
+
+    - name: Convert Falco GPG key to keyring
+      ansible.builtin.command:
+        cmd: gpg --dearmor -o /usr/share/keyrings/falco-archive-keyring.gpg /tmp/falcosecurity-packages.asc
+      args:
+        creates: /usr/share/keyrings/falco-archive-keyring.gpg
+
+    - name: Add Falco apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/falco-archive-keyring.gpg] https://download.falco.org/packages/deb stable main"
+        filename: falcosecurity
+        state: present
+        update_cache: yes
+
+    - name: Install Falco and dialog
+      ansible.builtin.apt:
+        name:
+          - dialog
+          - falco
+        state: present
+        update_cache: yes
+        lock_timeout: 300
+      register: falco_install
+      retries: 3
+      delay: 10
+      until: falco_install is succeeded
+
+    - name: Enable and start Falco
+      ansible.builtin.systemd:
+        name: falco
+        enabled: yes
+        state: started
+
+    - name: Collect Falco service facts
+      ansible.builtin.service_facts:
+
+    - name: Warn if no Falco service is running
+      ansible.builtin.debug:
+        msg: "Falco is installed but no known Falco systemd unit is running."
+      when:
+        - not (
+          ('falco.service' in ansible_facts.services and ansible_facts.services['falco.service'].state == 'running')
+          or
+          ('falco-modern-bpf.service' in ansible_facts.services and ansible_facts.services['falco-modern-bpf.service'].state == 'running')
+          )
+
+    - name: Remove downloaded Falco GPG key
+      ansible.builtin.file:
+        path: /tmp/falcosecurity-packages.asc
+        state: absent
+
     # --- FIREWALL --- #
     - name: Set UFW default incoming policy to deny
       community.general.ufw:
@@ -297,11 +362,73 @@
         state: absent
 
     # --- GO INSTALLATION --- #
-    - name: Install Go via apt
-      ansible.builtin.apt:
-        name: golang-go
-        state: present
-        update_cache: yes
+    - name: Set Go version
+      ansible.builtin.set_fact:
+        go_version: "1.25.9"
+        go_arch: "amd64"
+        go_install_dir: "/usr/local"
+        go_root: "/usr/local/go"
+        go_tarball: "/tmp/go1.25.9.linux-amd64.tar.gz"
+        go_download_url: "https://go.dev/dl/go1.25.9.linux-amd64.tar.gz"
+
+    - name: Check installed Go version
+      ansible.builtin.command: /usr/local/go/bin/go version
+      register: installed_go_version
+      changed_when: false
+      failed_when: false
+
+    - name: Download pinned Go toolchain
+      ansible.builtin.get_url:
+        url: "{{ go_download_url }}"
+        dest: "{{ go_tarball }}"
+        mode: "0644"
+        timeout: 300
+      when: installed_go_version.rc != 0 or ('go version go' ~ go_version ~ ' ' not in installed_go_version.stdout)
+
+    - name: Remove existing Go installation
+      ansible.builtin.file:
+        path: "{{ go_root }}"
+        state: absent
+      when: installed_go_version.rc != 0 or ('go version go' ~ go_version ~ ' ' not in installed_go_version.stdout)
+
+    - name: Install pinned Go toolchain
+      ansible.builtin.unarchive:
+        src: "{{ go_tarball }}"
+        dest: "{{ go_install_dir }}"
+        remote_src: yes
+        owner: root
+        group: root
+      when: installed_go_version.rc != 0 or ('go version go' ~ go_version ~ ' ' not in installed_go_version.stdout)
+
+    - name: Expose Go globally via profile.d
+      ansible.builtin.blockinfile:
+        path: /etc/profile.d/go.sh
+        create: true
+        owner: root
+        group: root
+        mode: "0644"
+        block: |
+          export GOROOT=/usr/local/go
+          export PATH=/usr/local/go/bin:$PATH
+
+    - name: Add Go to secure_path for sudo
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        regexp: '^Defaults\s+secure_path='
+        line: 'Defaults secure_path="/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"'
+        validate: "/usr/sbin/visudo -cf %s"
+
+    - name: Verify pinned Go version
+      ansible.builtin.command: /usr/local/go/bin/go version
+      register: go_version_check
+      changed_when: false
+
+    - name: Assert Go version is correct
+      ansible.builtin.assert:
+        that:
+          - "'go version go{{ go_version }} ' in go_version_check.stdout"
+        fail_msg: "Installed Go version does not match {{ go_version }}"
+        success_msg: "Pinned Go {{ go_version }} installed correctly"
 
     - name: Create Go workspace directories for {{ user1 }}
       ansible.builtin.file:
@@ -329,6 +456,8 @@
 
     - name: Install Go tools globally
       ansible.builtin.shell: |
+        export GOROOT=/usr/local/go
+        export PATH=/usr/local/go/bin:$PATH
         export GOPATH=/opt/go
         export GOBIN=/usr/local/bin
         go install golang.org/x/tools/gopls@latest
@@ -340,7 +469,7 @@
     - name: Add user Go bin to PATH in bashrc for {{ user1 }}
       ansible.builtin.lineinfile:
         path: "/home/{{ user1 }}/.bashrc"
-        line: "export PATH=$PATH:$HOME/go/bin"
+        line: "export PATH=/usr/local/go/bin:$PATH:$HOME/go/bin"
         create: yes
         owner: "{{ user1 }}"
         group: "{{ user1 }}"
@@ -348,10 +477,15 @@
     - name: Add user Go bin to PATH in bashrc for {{ user2 }}
       ansible.builtin.lineinfile:
         path: "/home/{{ user2 }}/.bashrc"
-        line: "export PATH=$PATH:$HOME/go/bin"
+        line: "export PATH=/usr/local/go/bin:$PATH:$HOME/go/bin"
         create: yes
         owner: "{{ user2 }}"
         group: "{{ user2 }}"
+
+    - name: Remove downloaded Go tarball
+      ansible.builtin.file:
+        path: "{{ go_tarball }}"
+        state: absent
 
     # --- ROOTFS SETUP --- #
     - name: Create rootfs images directory

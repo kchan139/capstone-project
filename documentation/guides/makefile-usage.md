@@ -74,5 +74,5 @@ sudo ./bin/mrunc delete <container-id>
 
 ```bash
 go env GOVERSION
-# go1.25.8
+# go1.25.9
 ```

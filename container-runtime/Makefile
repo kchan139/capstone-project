@@ -16,7 +16,7 @@ TEST_CONFIG=$(CONFIG_DIR)/test-container.json
 
 # Go configuration
 GO=go
-GO_REQUIRED_VERSION ?= go1.25.8
+GO_REQUIRED_VERSION ?= go1.25.9
 export GOTOOLCHAIN ?= local
 GOOS=$(shell $(GO) env GOOS)
 GOARCH=$(shell $(GO) env GOARCH)
@@ -226,7 +226,6 @@ test-all: test-unit test-integration ## Run all tests
 clean: ## Remove build artifacts
 	@echo "Cleaning build artifacts..."
 	@rm -rf $(BIN_DIR) coverage.out coverage.html
-	@$(GO) clean
 
 install: build ## Install binary to GOPATH
 	@echo "Installing $(BINARY_NAME)..."
