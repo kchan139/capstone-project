@@ -21,9 +21,15 @@ import (
 )
 
 func runCommand(ctx *cli.Context) error {
+	if ctx.NArg() != 1 {
+		return fmt.Errorf("usage: mrunc run [--bundle <bundle-dir>] <container-id>")
+	}
 	var bundlePath = ctx.String("bundle")
 	var fanotifyMonitorFilePath = ctx.String("fanotify-monitor")
-	var configPath, _ = utils.ResolveConfigPath(bundlePath)
+	configPath, err := utils.ResolveConfigPath(bundlePath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve config path: %w", err)
+	}
 	fmt.Printf("configPath: %v\n", configPath)
 
 	containerId := ctx.Args().Get(0)

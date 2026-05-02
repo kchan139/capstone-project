@@ -1,6 +1,6 @@
 # MRUNC Container Runtime Makefile
 
-.PHONY: all build check-go-version clean test test-integration test-namespaces test-filesystem test-lifecycle benchmark security-scan lint help run-dev run-ubuntu create
+.PHONY: all build check-go-version clean test test-integration test-namespaces test-filesystem test-lifecycle benchmark security-scan lint help run-dev run-ubuntu run create start list kill kill-all delete delete-force lifecycle clean-container
 
 # Build configuration
 BINARY_NAME=mrunc
@@ -13,6 +13,9 @@ INTERNAL_DIR=./internal/...
 CONFIG_DIR=./configs/examples
 DEFAULT_CONFIG=$(CONFIG_DIR)/ubuntu.json
 TEST_CONFIG=$(CONFIG_DIR)/test-container.json
+BUNDLE_DIR ?= /tmp/mrunc-default-bundle
+NAME ?= default
+SIGNAL ?= TERM
 
 # Go configuration
 GO=go
@@ -74,24 +77,59 @@ version: ## Show version information
 run-dev: ## Quick run with default config (go run)
 	@echo "Running mrunc in development mode..."
 	@if [ ! -f "$(DEFAULT_CONFIG)" ]; then echo "Error: Config file $(DEFAULT_CONFIG) not found"; exit 1; fi
-	sudo $(GO) run $(CMD_DIR) run dev $(DEFAULT_CONFIG)
+	@rm -rf "$(BUNDLE_DIR)"
+	@mkdir -p "$(BUNDLE_DIR)"
+	@cp "$(DEFAULT_CONFIG)" "$(BUNDLE_DIR)/config.json"
+	sudo $(GO) run $(CMD_DIR) run --bundle "$(BUNDLE_DIR)" dev
 
 run-ubuntu: ## Run with Ubuntu config (go run)
 	@echo "Running mrunc with Ubuntu config..."
 	@if [ ! -f "$(DEFAULT_CONFIG)" ]; then echo "Error: Config file $(DEFAULT_CONFIG) not found"; exit 1; fi
-	sudo $(GO) run $(CMD_DIR) run ubuntu $(DEFAULT_CONFIG)
+	@rm -rf "$(BUNDLE_DIR)"
+	@mkdir -p "$(BUNDLE_DIR)"
+	@cp "$(DEFAULT_CONFIG)" "$(BUNDLE_DIR)/config.json"
+	sudo $(GO) run $(CMD_DIR) run --bundle "$(BUNDLE_DIR)" ubuntu
 
 run: build ## Run built binary with default config
 	@echo "Running built binary..."
 	@if [ ! -f "$(DEFAULT_CONFIG)" ]; then echo "Error: Config file $(DEFAULT_CONFIG) not found"; exit 1; fi
-	sudo ./$(BIN_DIR)/$(BINARY_NAME) run default $(DEFAULT_CONFIG)
+	@rm -rf "$(BUNDLE_DIR)"
+	@mkdir -p "$(BUNDLE_DIR)"
+	@cp "$(DEFAULT_CONFIG)" "$(BUNDLE_DIR)/config.json"
+	sudo ./$(BIN_DIR)/$(BINARY_NAME) run --bundle "$(BUNDLE_DIR)" "$(NAME)"
 
 ##@ Container Commands
 create: build ## Create container (Usage: make create NAME=<name> [CONFIG=path])
-	@if [ -z "$(NAME)" ]; then echo "Usage: make create NAME=<container-name> [CONFIG=path]"; exit 1; fi
 	@CONFIG_FILE=$${CONFIG:-$(DEFAULT_CONFIG)}; \
 	if [ ! -f "$$CONFIG_FILE" ]; then echo "Error: Config file $$CONFIG_FILE not found"; exit 1; fi; \
-	sudo ./$(BIN_DIR)/$(BINARY_NAME) create $(NAME) $$CONFIG_FILE
+	rm -rf "$(BUNDLE_DIR)"; \
+	mkdir -p "$(BUNDLE_DIR)"; \
+	cp "$$CONFIG_FILE" "$(BUNDLE_DIR)/config.json"; \
+	sudo ./$(BIN_DIR)/$(BINARY_NAME) create --bundle "$(BUNDLE_DIR)" $(NAME)
+
+start: build ## Start a created container (Usage: make start NAME=<name>)
+	sudo ./$(BIN_DIR)/$(BINARY_NAME) start "$(NAME)"
+
+list: build ## List containers
+	sudo ./$(BIN_DIR)/$(BINARY_NAME) list
+
+kill: build ## Send signal to container init process (Usage: make kill NAME=<name> [SIGNAL=TERM|KILL|9])
+	sudo ./$(BIN_DIR)/$(BINARY_NAME) kill "$(NAME)" "$(SIGNAL)"
+
+kill-all: build ## Kill all processes in the container cgroup
+	sudo ./$(BIN_DIR)/$(BINARY_NAME) kill --all "$(NAME)"
+
+delete: build ## Delete a stopped container
+	sudo ./$(BIN_DIR)/$(BINARY_NAME) delete "$(NAME)"
+
+delete-force: build ## Force-delete a running/stuck container
+	sudo ./$(BIN_DIR)/$(BINARY_NAME) delete --force "$(NAME)"
+
+clean-container: build ## Best-effort cleanup for one container
+	-sudo ./$(BIN_DIR)/$(BINARY_NAME) kill --all "$(NAME)"
+	-sudo ./$(BIN_DIR)/$(BINARY_NAME) delete --force "$(NAME)"
+
+lifecycle: create start list ## Create, start, then list container state
 
 ##@ Test Commands
 test: test-unit ## Run all unit tests
@@ -114,8 +152,8 @@ test-all: test-unit test-integration ## Run all tests
 
 ##@ Utility Commands
 clean: ## Remove build artifacts
-	@echo "Cleaning build artifacts..."
 	@rm -rf $(BIN_DIR) coverage.out coverage.html
+	@echo "Removed build artifacts"
 
 install: build ## Install binary to GOPATH
 	@echo "Installing $(BINARY_NAME)..."

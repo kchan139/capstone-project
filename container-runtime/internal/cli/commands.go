@@ -13,7 +13,7 @@ func NewApp() *cli.App {
 		Commands: []*cli.Command{
 			{
 				Name:  "run",
-				Usage: "Run a container from a config file",
+				Usage: "Run a container from an OCI bundle",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:  "fanotify-monitor",
@@ -22,11 +22,11 @@ func NewApp() *cli.App {
 					},
 					&cli.StringFlag{
 						Name:  "bundle",
-						Usage: "path to the container configuration file",
+						Usage: "path to OCI bundle directory containing config.json",
 						Value: "",
 					},
 				},
-				ArgsUsage: "<config.json>",
+				ArgsUsage: "<container-id>",
 				Action:    runCommand,
 			},
 			{
@@ -50,7 +50,7 @@ func NewApp() *cli.App {
 			},
 			{
 				Name:  "create",
-				Usage: "Create the container but not run it",
+				Usage: "Create a container without starting its process",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:  "console-socket",
@@ -64,11 +64,12 @@ func NewApp() *cli.App {
 					},
 					&cli.StringFlag{
 						Name:  "bundle",
-						Usage: "path to the container configuration file",
+						Usage: "path to OCI bundle directory containing config.json",
 						Value: "",
 					},
 				},
-				Action: createCommand,
+				ArgsUsage: "<container-id>",
+				Action:    createCommand,
 			},
 			{
 				Name:   "intermediate",
