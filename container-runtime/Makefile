@@ -90,12 +90,20 @@ run-ubuntu: ## Run with Ubuntu config (go run)
 	@cp "$(DEFAULT_CONFIG)" "$(BUNDLE_DIR)/config.json"
 	sudo $(GO) run $(CMD_DIR) run --bundle "$(BUNDLE_DIR)" ubuntu
 
-run: build ## Run built binary with default config
-	@echo "Running built binary..."
-	@if [ ! -f "$(DEFAULT_CONFIG)" ]; then echo "Error: Config file $(DEFAULT_CONFIG) not found"; exit 1; fi
+run-interactive: build
+	@echo "Running mrunc with interactive Ubuntu config..."
 	@rm -rf "$(BUNDLE_DIR)"
 	@mkdir -p "$(BUNDLE_DIR)"
-	@cp "$(DEFAULT_CONFIG)" "$(BUNDLE_DIR)/config.json"
+	@cp "./configs/examples/interactive-ubuntu.json" "$(BUNDLE_DIR)/config.json"
+	sudo ./$(BIN_DIR)/$(BINARY_NAME) run --bundle "$(BUNDLE_DIR)" interactive
+
+run: build ## Run built binary with config. Usage: make run NAME=<name> CONFIG=<path>
+	@CONFIG_FILE=$${CONFIG:-$(DEFAULT_CONFIG)}; \
+	echo "Running built binary with $$CONFIG_FILE..."; \
+	if [ ! -f "$$CONFIG_FILE" ]; then echo "Error: Config file $$CONFIG_FILE not found"; exit 1; fi; \
+	rm -rf "$(BUNDLE_DIR)"; \
+	mkdir -p "$(BUNDLE_DIR)"; \
+	cp "$$CONFIG_FILE" "$(BUNDLE_DIR)/config.json"; \
 	sudo ./$(BIN_DIR)/$(BINARY_NAME) run --bundle "$(BUNDLE_DIR)" "$(NAME)"
 
 ##@ Container Commands
