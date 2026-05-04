@@ -3,7 +3,6 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"golang.org/x/sys/unix"
 	"log"
 	"mrunc/internal/container"
 	"mrunc/internal/runtime"
@@ -15,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/urfave/cli/v2"
 )
@@ -76,7 +77,7 @@ func createCommand(ctx *cli.Context) error {
 		return err
 	}
 	//----------------------------------------- setup cgroup
-	fmt.Printf("Child PID: %d", cmd.Process.Pid)
+	fmt.Printf("Child PID: %d\n", cmd.Process.Pid)
 	var cgroupPath string
 	if cgroupPath, err = runtime.CreateCgroup(config, cmd.Process.Pid); err != nil {
 		return fmt.Errorf("failed to create cgroup: %v", err)

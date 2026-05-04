@@ -59,9 +59,11 @@ check-go-version:
 
 ##@ Build Commands
 build: check-go-version ## Build the mrunc binary
-	@echo "Building $(BINARY_NAME) $(VERSION)..."
+	@if [ "$(MAKECMDGOALS)" = "build" ]; then \
+		echo "Building $(BINARY_NAME) $(VERSION)..."; \
+	fi
 	@mkdir -p $(BIN_DIR)
-	$(GO) build $(BUILD_FLAGS) -o $(BIN_DIR)/$(BINARY_NAME) $(CMD_DIR)
+	@$(GO) build $(BUILD_FLAGS) -o $(BIN_DIR)/$(BINARY_NAME) $(CMD_DIR)
 
 build-race: ## Build with race detection
 	@echo "Building $(BINARY_NAME) with race detection..."

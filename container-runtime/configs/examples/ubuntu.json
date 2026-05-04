@@ -4,7 +4,7 @@
     "readonly": false
   },
   "process": {
-    "args": ["/home/test"],
+    "args": ["/bin/sh", "-c", "echo '--- hello from mrunc ---'"],
     "env": [
     ],
     "cwd": "/",
