@@ -16,7 +16,7 @@ cd container-runtime
 | `CONFIG`              | `./configs/examples/ubuntu.json` | Container config file copied into the temporary bundle |
 | `BUNDLE_DIR`          |      `/tmp/mrunc-default-bundle` | Temporary OCI-style bundle directory                   |
 | `SIGNAL`              |                           `TERM` | Signal used by `make kill`                             |
-| `GO_REQUIRED_VERSION` |                       `go1.25.9` | Required Go version                                    |
+| `GO_REQUIRED_VERSION` |                       `go1.25.10` | Required Go version                                    |
 
 Example override:
 

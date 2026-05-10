@@ -3,12 +3,12 @@
 ## Prerequisites
 
 - Linux.
-- Go `1.25.9`.
+- Go `1.25.10`.
 - `make`.
 - `libseccomp` development headers for builds with seccomp support.
 - Root or `sudo` for runtime commands that create namespaces, mounts, cgroups, and network devices.
 
-The Makefile enforces `go1.25.9` with `check-go-version`.
+The Makefile enforces `go1.25.10` with `check-go-version`.
 
 ## Build and test
 

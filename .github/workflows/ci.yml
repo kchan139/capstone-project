@@ -61,7 +61,7 @@ jobs:
             - name: Set up Go from go.mod
               uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
               with:
-                  go-version: "1.25.9"
+                  go-version: "1.25.10"
                   cache: true
                   cache-dependency-path: container-runtime/go.sum
 
@@ -102,7 +102,7 @@ jobs:
             - name: Set up Go from go.mod
               uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
               with:
-                  go-version: "1.25.9"
+                  go-version: "1.25.10"
                   cache: true
                   cache-dependency-path: container-runtime/go.sum
 
@@ -129,7 +129,7 @@ jobs:
             - name: Set up Go from go.mod
               uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
               with:
-                  go-version: "1.25.9"
+                  go-version: "1.25.10"
                   cache: true
                   cache-dependency-path: container-runtime/go.sum
 
@@ -159,7 +159,7 @@ jobs:
             - name: Set up Go from go.mod
               uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
               with:
-                  go-version: "1.25.9"
+                  go-version: "1.25.10"
                   cache: true
                   cache-dependency-path: container-runtime/go.sum
 
@@ -205,7 +205,7 @@ jobs:
             - name: Set up Go from go.mod
               uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
               with:
-                  go-version: "1.25.9"
+                  go-version: "1.25.10"
                   cache: true
                   cache-dependency-path: container-runtime/go.sum
 
@@ -242,7 +242,7 @@ jobs:
             - name: Set up Go from go.mod
               uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
               with:
-                  go-version: "1.25.9"
+                  go-version: "1.25.10"
                   cache: true
                   cache-dependency-path: container-runtime/go.sum
 
