@@ -46,15 +46,13 @@ func deleteCommand(ctx *cli.Context) error {
 		return fmt.Errorf("failed to delete state directory for container %s: %v", cs.ID, err)
 	}
 	// 2. remove the cgroup path
-	killFile := filepath.Join(ps.CgroupPath, "cgroup.kill")
-	if err := os.WriteFile(killFile, []byte("1"), 0); err != nil {
-		return fmt.Errorf("failed to kill cgroup processes: %v", err)
-	}
-
-	// Give the kernel a moment to kill all processes
-	time.Sleep(100 * time.Millisecond)
-	if err := os.Remove(ps.CgroupPath); err != nil {
-		return fmt.Errorf("failed to remove cgroup %s: %v", ps.CgroupPath, err)
+	if _, err := os.Stat(ps.CgroupPath); err == nil {
+		os.WriteFile(filepath.Join(ps.CgroupPath, "cgroup.kill"),
+			[]byte("1"), 0)
+		time.Sleep(100 * time.Millisecond)
+		if err := os.Remove(ps.CgroupPath); err != nil {
+			return fmt.Errorf("failed to remove cgroup: %v", err)
+		}
 	}
 	return nil
 }
