@@ -52,7 +52,6 @@ func TestCreateNamespaces(t *testing.T) {
 
 		expectedCloneFlags := uintptr(
 			syscall.CLONE_NEWUTS |
-				syscall.CLONE_NEWNS |
 				syscall.CLONE_NEWPID |
 				syscall.CLONE_NEWNET |
 				syscall.CLONE_NEWIPC |
