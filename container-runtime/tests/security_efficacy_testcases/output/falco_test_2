@@ -1,0 +1,139 @@
+Wed Apr 29 19:11:25 2026: Falco version: 0.43.1 (x86_64)
+Wed Apr 29 19:11:25 2026: Falco initialized with configuration files:
+Wed Apr 29 19:11:25 2026:    /etc/falco/config.d/engine-kind-falcoctl.yaml | schema validation: ok
+Wed Apr 29 19:11:25 2026:    /etc/falco/config.d/falco.container_plugin.yaml | schema validation: ok
+Wed Apr 29 19:11:25 2026:    /etc/falco/falco.yaml | schema validation: ok
+Wed Apr 29 19:11:25 2026: System info: Linux version 6.8.0-107-generic (buildd@lcy02-amd64-059) (x86_64-linux-gnu-gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, GNU ld (GNU Binutils for Ubuntu) 2.42) #107-Ubuntu SMP PREEMPT_DYNAMIC Fri Mar 13 19:51:50 UTC 2026
+Wed Apr 29 19:11:25 2026: Loaded plugin 'container@0.6.4' from file /usr/share/falco/plugins/libcontainer.so
+Wed Apr 29 19:11:25 2026: [libs]: container: Enabled 'podman' container engine.
+Wed Apr 29 19:11:25 2026: [libs]: container: * enabled container runtime socket at '/run/podman/podman.sock'
+Wed Apr 29 19:11:25 2026: [libs]: container: Enabled 'docker' container engine.
+Wed Apr 29 19:11:25 2026: [libs]: container: * enabled container runtime socket at '/var/run/docker.sock'
+Wed Apr 29 19:11:25 2026: [libs]: container: Enabled 'cri' container engine.
+Wed Apr 29 19:11:25 2026: [libs]: container: * enabled container runtime socket at '/run/containerd/containerd.sock'
+Wed Apr 29 19:11:25 2026: [libs]: container: * enabled container runtime socket at '/run/crio/crio.sock'
+Wed Apr 29 19:11:25 2026: [libs]: container: * enabled container runtime socket at '/run/k3s/containerd/containerd.sock'
+Wed Apr 29 19:11:25 2026: [libs]: container: * enabled container runtime socket at '/run/host-containerd/containerd.sock'
+Wed Apr 29 19:11:25 2026: [libs]: container: Enabled 'containerd' container engine.
+Wed Apr 29 19:11:25 2026: [libs]: container: * enabled container runtime socket at '/run/host-containerd/containerd.sock'
+Wed Apr 29 19:11:25 2026: [libs]: container: Enabled 'lxc' container engine.
+Wed Apr 29 19:11:25 2026: [libs]: container: Enabled 'libvirt_lxc' container engine.
+Wed Apr 29 19:11:25 2026: [libs]: container: Enabled 'bpm' container engine.
+Wed Apr 29 19:11:25 2026: Loading rules from:
+Wed Apr 29 19:11:25 2026:    custom_rules.yaml | schema validation: ok
+Wed Apr 29 19:11:25 2026: The chosen syscall buffer dimension is: 8388608 bytes (8 MBs)
+Wed Apr 29 19:11:25 2026: Starting health webserver with threadiness 2, listening on 0.0.0.0:8765
+Wed Apr 29 19:11:25 2026: Loaded event sources: syscall
+Wed Apr 29 19:11:25 2026: Enabled event sources: syscall
+Wed Apr 29 19:11:25 2026: Opening 'syscall' source with modern BPF probe.
+Wed Apr 29 19:11:25 2026: One ring buffer every '2' CPUs.
+Wed Apr 29 19:11:25 2026: [libs]: Trying to open the right engine!
+19:11:32.502418786: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.505606989: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.505706939: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.505889652: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.505980934: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.506048892: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.506111384: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.506181534: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.506252012: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.506315503: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.507154187: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.507600228: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.507957068: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.508048326: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.508108373: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.508170129: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.508229490: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.508285302: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.508369582: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.508430375: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.508485743: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.508955975: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.509035607: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.509103830: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.509178842: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.509241104: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.509315475: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.509442770: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.509496527: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.509561471: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.509620393: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.510145459: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.510211517: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.510269412: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.510345524: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.510444309: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.510513908: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.510577126: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.510631208: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.510684867: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.510770587: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.510832812: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.510889004: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.511017660: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.511073047: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.511133839: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.511195160: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.511249256: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.511302293: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+19:11:32.511412370: Warning Write detected from monitored process (evt=write proc=p2 pid=203267
+ fd=3 size=13) container_id=host container_name=host container_image_repository= container_image_tag= k8s_pod_name=<NA> k8s_ns_name=<NA>
+Wed Apr 29 19:11:37 2026: SIGINT received, exiting...
+Syscall event drop monitoring:
+   - event drop detected: 0 occurrences
+   - num times actions taken: 0
+Events detected: 50
+Rule counts by severity:
+   WARNING: 50
+Triggered rules by rule name:
+   Monitor Test2 Write (Process Scoped): 50

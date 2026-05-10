@@ -26,7 +26,6 @@ func CreateNamespaces(config *mySpecs.ContainerConfig) *syscall.SysProcAttr {
 		case "uts":
 			cloneFlags |= syscall.CLONE_NEWUTS
 		case "mount":
-			cloneFlags |= syscall.CLONE_NEWNS
 			unshareFlags |= syscall.CLONE_NEWNS
 		case "cgroup":
 			cloneFlags |= syscall.CLONE_NEWCGROUP

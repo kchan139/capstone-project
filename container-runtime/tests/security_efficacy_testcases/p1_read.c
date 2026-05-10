@@ -8,7 +8,7 @@ int main() {
     int success = 0;
 
     for (int i = 1; i <= NUM_FILES; i++) {
-        snprintf(filepath, sizeof(filepath), "test_%d.txt", i);
+        snprintf(filepath, sizeof(filepath), "test_1/test_%d.txt", i);
         if (do_open_read(filepath) == 0)
             success++;
     }

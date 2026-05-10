@@ -153,7 +153,7 @@ func monitorCommand(ctx *cli.Context) error {
 			for attempt := 0; attempt < 3; attempt++ {
 				err := unix.Unmount(mount.path, 0)
 				if err == nil {
-					fmt.Printf("  ✓ Successfully unmounted layer %d: %s\n", attempt+1, mount.path)
+					fmt.Printf("  Successfully unmounted layer %d: %s\n", attempt+1, mount.path)
 					continue
 				}
 
@@ -175,9 +175,9 @@ func monitorCommand(ctx *cli.Context) error {
 			// Final fallback: lazy unmount
 			err := unix.Unmount(mount.path, unix.MNT_DETACH)
 			if err == nil {
-				fmt.Printf("  ✓ Lazy unmount successful: %s\n", mount.path)
+				fmt.Printf("  Lazy unmount successful: %s\n", mount.path)
 			} else if err != syscall.EINVAL && err != syscall.ENOENT {
-				fmt.Printf("  ✗ Lazy unmount failed: %v\n", err)
+				fmt.Printf("  Lazy unmount failed: %v\n", err)
 			}
 		}
 
@@ -204,10 +204,10 @@ func monitorCommand(ctx *cli.Context) error {
 		if !isMounted(mounts, rule.Path) {
 			err = unix.Mount(rule.Path, rule.Path, "", unix.MS_BIND, "")
 			if err != nil {
-				log.Printf("  ✗ Bind mount failed for %s: %v (skipping)", rule.Path, err)
+				log.Printf(" Bind mount failed for %s: %v (skipping)", rule.Path, err)
 				continue
 			}
-			fmt.Printf("  ✓ Bind mount created\n")
+			fmt.Printf(" Bind mount created\n")
 
 			// Make it private (recommended for isolation)
 			err = unix.Mount("", rule.Path, "", unix.MS_PRIVATE, "")
@@ -225,7 +225,7 @@ func monitorCommand(ctx *cli.Context) error {
 		// Build event mask based on events and action
 		eventMask, err := monitorfanotify.BuildEventMask(rule)
 		if err != nil {
-			log.Printf("  ✗ Failed to build event mask: %v (skipping)", err)
+			log.Printf(" Failed to build event mask: %v (skipping)", err)
 			continue
 		}
 
@@ -238,10 +238,10 @@ func monitorCommand(ctx *cli.Context) error {
 			rule.Path,
 		)
 		if err != nil {
-			log.Printf("  ✗ FanotifyMark failed for %s: %v (skipping)", rule.Path, err)
+			log.Printf(" FanotifyMark failed for %s: %v (skipping)", rule.Path, err)
 			continue
 		}
-		fmt.Printf("  ✓ Fanotify mark added (mask: 0x%x, action: %s)\n", eventMask, rule.Action)
+		fmt.Printf(" Fanotify mark added (mask: 0x%x, action: %s)\n", eventMask, rule.Action)
 	}
 
 	if len(mounts) == 0 {
@@ -249,12 +249,12 @@ func monitorCommand(ctx *cli.Context) error {
 	}
 
 	if hasBlockAction {
-		fmt.Printf("\n✓ Successfully monitoring %d/%d paths (PERMISSION mode - blocking enabled)\n",
+		fmt.Printf("\nSuccessfully monitoring %d/%d paths (PERMISSION mode - blocking enabled)\n",
 			len(mounts), len(validRules))
 		fmt.Println("Events will be BLOCKED according to rules... (Ctrl+C to stop)")
 		fmt.Println()
 	} else {
-		fmt.Printf("\n✓ Successfully monitoring %d/%d paths (NOTIFICATION mode - audit only)\n",
+		fmt.Printf("\nSuccessfully monitoring %d/%d paths (NOTIFICATION mode - audit only)\n",
 			len(mounts), len(validRules))
 		fmt.Println("Events are logged but NOT blocked... (Ctrl+C to stop)")
 		fmt.Println()
@@ -290,14 +290,16 @@ func monitorCommand(ctx *cli.Context) error {
 						Fd: event.Fd,
 					}
 					//  permissive event => block
-					response.Response = unix.FAN_DENY
+					// response.Response = unix.FAN_DENY
+					// test, should delete
+					response.Response = unix.FAN_ALLOW
+
 					monitorAction = "block"
 					// Send response
-					written, err := unix.Write(fd, (*[unsafe.Sizeof(response)]byte)(unsafe.Pointer(&response))[:])
+					_, err := unix.Write(fd, (*[unsafe.Sizeof(response)]byte)(unsafe.Pointer(&response))[:])
 					if err != nil {
 						log.Printf("Failed to send response: %v", err)
 					}
-					fmt.Printf("  DEBUG: response Write n=%d, err=%v, sizeof=%d\n", written, err, unsafe.Sizeof(response))
 				}
 				// go back to host mount namespace
 				if err := unix.Setns(ownMountNsFd, unix.CLONE_NEWNS); err != nil {

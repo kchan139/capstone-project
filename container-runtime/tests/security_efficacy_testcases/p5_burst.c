@@ -8,7 +8,7 @@ int main() {
     char buf[256];
 
     // open once - triggers FAN_OPEN once
-    int fd = open("burst_file.txt", O_RDONLY);
+    int fd = open("test_5/burst_file.txt", O_RDONLY);
     if (fd < 0)
         return 1;
 

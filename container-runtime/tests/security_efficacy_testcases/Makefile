@@ -13,3 +13,7 @@ p4: p4_mix.c fs_ops.c
 
 p5: p5_burst.c fs_ops.c
 	$(CC) $(CFLAGS) -o p5 p5_burst.c fs_ops.c
+
+p9: p9_stress_2.c fs_ops.c
+	$(CC) $(CFLAGS) -o p9 p9_stress_2.c fs_ops.c
+	$(CC) $(CFLAGS) -o p9_helper p9_helper.c fs_ops.c
