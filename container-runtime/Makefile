@@ -19,7 +19,7 @@ SIGNAL ?= TERM
 
 # Go configuration
 GO=go
-GO_REQUIRED_VERSION ?= go1.25.9
+GO_REQUIRED_VERSION ?= go1.25.10
 export GOTOOLCHAIN ?= local
 GOOS=$(shell $(GO) env GOOS)
 GOARCH=$(shell $(GO) env GOARCH)
